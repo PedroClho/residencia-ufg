@@ -1,0 +1,488 @@
+{
+  "configuracao": "sem_memoria",
+  "turnos": [
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Bom dia! Começando a semana à base de muito café.",
+      "assistente": "Bom dia! Que a semana seja produtiva e o café faça seu trabalho. ☕ Em que posso ajudar hoje?"
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Trabalho como analista de dados na Cerrado Logística, e segunda-feira lá é sempre o dia mais corrido.",
+      "assistente": "Entendi, segunda-feira de analista de dados costuma ser puxada, com relatórios e demandas acumuladas. Quer ajuda para organizar as prioridades do dia, montar uma lista de tarefas ou resolver alguma questão de dados?"
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Me dá uma dica rápida pra organizar as tarefas da semana sem me perder?",
+      "assistente": "Separe as tarefas em três grupos: **urgente hoje**, **importante da semana** e **pode esperar**. Depois, escolha no máximo 3 prioridades por dia e reserve um bloco de tempo, de preferência de manhã, para a mais pesada, como análises e consultas complexas. Deixe a tarde para reuniões e demandas rápidas.\n\nNa sexta, anote o que ficou pendente para começar a segunda-feira já com a lista pronta."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Que calor absurdo aqui em Goiânia. Tem algum truque pra dormir melhor sem ar-condicionado?",
+      "assistente": "Alguns truques que ajudam:\n\n- **Ventile o quarto:** abra as janelas à noite, quando a temperatura cai, e feche durante o dia com cortina grossa.\n- **Ventilador com gelo:** coloque uma bacia com gelo na frente dele para refrescar o ar.\n- **Banho morno antes de deitar:** ajuda o corpo a baixar a temperatura. Água muito gelada tem o efeito contrário.\n- **Roupa de cama leve:** use algodão ou linho e evite sintéticos.\n- **Garrafa congelada:** deixe uma garrafa de água no freezer e coloque perto dos pés ou da nuca.\n- **Lençol úmido:** umedeça levemente um lençol fino e use por cima do corpo com o ventilador ligado.\n- **Evite refeição pesada, álcool e cafeína à noite**, pois aumentam o calor corporal e atrapalham o sono.\n\nComo você tomou muito café hoje, vale cortar a cafeína depois do almoço. 😉"
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Meu cachorro se chama Paçoca e hoje ele roeu o pé da mesa da sala.",
+      "assistente": "Antes, uma correção: na resposta anterior eu disse que você tomou muito café hoje, mas você nunca falou isso. Foi invenção minha, desculpe. A dica de evitar cafeína à noite continua valendo.\n\nSobre o Paçoca, roer móveis costuma ser tédio, ansiedade ou energia acumulada (ou dentição, se for filhote). Algumas dicas:\n\n- **Passeios e brincadeiras:** gaste a energia dele, principalmente antes de você sair.\n- **Brinquedos de roer:** ofereça mordedores e brinquedos recheáveis para ele ter um alvo certo.\n- **Repelente para pets:** passe nos pés da mesa. Existem versões amargas seguras para cães.\n- **Redirecione sem brigar:** brigar depois do fato não adianta, ele não associa. Troque o móvel por um brinquedo na hora.\n\nSe ele é filhote ou o comportamento é frequente, vale conversar com um veterinário."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Como eu tiro mancha de café de uma camisa branca?",
+      "assistente": "Passos rápidos:\n\n1. **Enxágue logo com água fria** pelo avesso da mancha, para empurrar o café para fora do tecido. Evite água quente, que fixa a mancha.\n2. **Aplique detergente neutro** (ou sabão em barra) e esfregue de leve. Deixe agir por 10 a 15 minutos.\n3. **Se persistir**, faça uma pasta com bicarbonato e um pouco de água, ou misture água com vinagre branco (1:1), e deixe agir por 20 a 30 minutos.\n4. **Lave normalmente.** Para camisa branca, pode usar alvejante sem cloro ou removedor de manchas, seguindo a etiqueta.\n5. **Confira antes de secar:** se a mancha ainda estiver visível, repita. A secadora ou o ferro podem fixá-la de vez.\n\nSe a mancha for antiga, deixe a camisa de molho por algumas horas com água e removedor de manchas."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Me explica de um jeito simples a diferença entre média e mediana?",
+      "assistente": "**Média:** soma todos os valores e divide pela quantidade. É o \"valor equilibrado\".\n\n**Mediana:** ordena os valores do menor para o maior e pega o do meio. É o \"valor central\".\n\n**Exemplo:** salários de 5 pessoas (em R$ mil): 2, 2, 3, 3, 40\n\n- **Média:** (2+2+3+3+40) ÷ 5 = **10**\n- **Mediana:** o valor do meio é **3**\n\nA média foi puxada para cima pelo valor muito alto (40). A mediana mostra melhor o que é \"típico\" nesse grupo.\n\n**Resumindo:** use a média quando os valores são parecidos, e a mediana quando há valores muito fora da curva.\n\nSe a quantidade de valores for par, a mediana é a média dos dois do meio."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Meu chefe marcou uma reunião às oito da manhã de amanhã. Alguma dica pra eu chegar mais desperta?",
+      "assistente": "Algumas dicas para hoje à noite e amanhã cedo:\n\n**Hoje à noite:**\n- **Durma cedo:** tente garantir 7 a 8 horas de sono.\n- **Evite telas** na última hora antes de dormir.\n- **Deixe tudo pronto:** roupa, bolsa e materiais da reunião. Isso poupa tempo e estresse de manhã.\n- **Evite cafeína** depois do meio da tarde.\n\n**Amanhã cedo:**\n- **Levante na primeira vez que o alarme tocar.** Adiar o despertador deixa mais sonolenta.\n- **Pegue luz natural:** abra a janela ou saia um minutinho.\n- **Beba água** assim que acordar.\n- **Banho morno terminando em água mais fria** ajuda a despertar.\n- **Tome um café da manhã leve**, com proteína e fruta, sem muito açúcar.\n- **Café:** pode tomar, de preferência uns 30 a 60 minutos depois de acordar.\n- **Alongue-se** por alguns minutos para ativar o corpo.\n\nSe puder, acorde com uma folga de tempo para não começar o dia correndo."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Tô fazendo natação três vezes por semana, às seis da manhã, e acordar cedo tá sendo um sofrimento.",
+      "assistente": "Dá pra deixar mais fácil:\n\n- **Fixe o horário de dormir e acordar**, inclusive nos fins de semana. É o que mais ajuda o corpo a se adaptar.\n- **Antecipe o sono aos poucos:** vá dormir 15 minutos mais cedo a cada dois ou três dias, até chegar a 7-8 horas.\n- **Deixe a mochila da natação pronta** na noite anterior (maiô, touca, óculos, toalha, roupa).\n- **Coloque o despertador longe da cama**, para precisar levantar.\n- **Acenda a luz ou abra a janela** assim que acordar.\n- **Faça um lanche leve antes**, como banana ou torrada, se você sentir fraqueza em jejum.\n- **Combine com alguém** ou escolha um horário fixo na semana, para criar compromisso.\n\nEm geral, o corpo leva de duas a quatro semanas para se acostumar. Se mesmo assim estiver muito pesado, vale ver se há uma turma mais tarde.\n\nVocê tem natação amanhã antes da reunião das 8h? Se tiver, posso sugerir uma rotina para esse dia."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Vale mais a pena comprar uma cafeteira italiana ou uma de filtro?",
+      "assistente": "Depende do que você valoriza:\n\n**Cafeteira italiana (moka)**\n- Café mais forte e encorpado, quase de espresso.\n- Barata, durável e sem energia elétrica (vai no fogão).\n- Faz pouca quantidade por vez (1 a 6 xícaras, conforme o tamanho).\n- Exige atenção: fogo baixo e tirar na hora certa, senão fica amargo.\n- Limpeza simples, mas precisa desmontar.\n\n**Cafeteira de filtro (elétrica)**\n- Café mais suave e leve.\n- Faz bastante de uma vez e é só apertar o botão.\n- Prática para manhãs corridas, e muitas têm timer para deixar programado.\n- Ocupa mais espaço e depende de tomada.\n- Gasta filtros de papel (ou usa um permanente).\n\n**Minha sugestão:**\n- Se você gosta de café forte e toma poucas xícaras: **italiana**.\n- Se prefere café suave, toma mais de uma xícara ou quer praticidade: **filtro**.\n\nComo você está com manhãs cedo, a de filtro com timer pode ajudar: você acorda com o café pronto."
+    },
+    {
+      "sessao": "2026-03-02",
+      "usuario": "Me sugere um lanche prático pra levar pro trabalho?",
+      "assistente": "Algumas opções práticas e fáceis de transportar:\n\n- **Sanduíche natural:** pão integral, frango desfiado ou ovo, queijo branco e folhas.\n- **Iogurte natural com frutas e granola:** leve a granola separada para não amolecer.\n- **Mix de castanhas e frutas secas:** não precisa de geladeira.\n- **Fruta com pasta de amendoim:** maçã ou banana.\n- **Ovos cozidos:** dá para preparar vários de uma vez.\n- **Wrap de frango ou atum** com cenoura ralada e requeijão.\n- **Barrinha de cereal** ou **torrada integral com queijo**, para emergências.\n\nComo você nada de manhã, vale incluir proteína (ovo, frango, iogurte) para repor a energia.\n\nQuer que eu sugira um cardápio para a semana?"
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Oi! Hoje o dia começou com chuva forte e o trânsito tava parado.",
+      "assistente": "Oi! Chuva forte com trânsito parado é uma combinação ruim, ainda mais numa segunda-feira. Espero que você tenha chegado bem. Quer que eu ajude com algo hoje, como organizar a agenda ou avisar sobre atrasos?"
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Me sugere uma receita rápida de jantar com frango e batata-doce?",
+      "assistente": "**Frango com batata-doce na frigideira (cerca de 30 min)**\n\n**Ingredientes:**\n- 2 filés de frango em cubos\n- 1 batata-doce grande em cubos pequenos\n- 2 dentes de alho picados\n- Sal, pimenta, páprica e azeite\n\n**Modo de preparo:**\n1. Tempere o frango com sal, pimenta, páprica e alho.\n2. Cozinhe a batata-doce em água fervente por uns 5 minutos, só para amolecer um pouco, e escorra.\n3. Em uma frigideira com azeite, doure o frango por uns 7 minutos.\n4. Junte a batata-doce e mexa por mais 8 a 10 minutos, até dourar.\n5. Finalize com salsinha ou cebolinha, se tiver.\n\nCombina bem com salada verde. Se quiser, posso sugerir uma versão no forno ou na airfryer."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Entreguei hoje o relatório de fechamento do trimestre. Que alívio!",
+      "assistente": "Parabéns por entregar! Fechamento de trimestre costuma pesar, então o alívio é merecido. 🎉\n\nCom a chuva e o trânsito de hoje, a noite pede descanso. A receita de frango com batata-doce pode ser um bom jantar pra comemorar."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Quantos minutos eu deixo o ovo cozinhando pra gema ficar mole?",
+      "assistente": "Cerca de **6 a 7 minutos** na água já fervendo:\n\n- **6 min:** gema bem mole, clara firme.\n- **7 min:** gema mole, mas mais cremosa.\n\nColoque o ovo com cuidado na água fervente e, ao tirar, passe direto para uma tigela com água gelada por 1 a 2 minutos. Isso interrompe o cozimento e facilita descascar."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Moro no Setor Bueno, e o barulho da obra no prédio do lado tá me deixando doida.",
+      "assistente": "Que chato, obra do lado cansa mesmo, ainda mais depois de um fechamento de trimestre.\n\nUma correção: antes eu falei de chuva e trânsito hoje, mas não tenho essa informação. Foi erro meu.\n\nAlgumas ideias:\n- **Fones com cancelamento de ruído** ou ruído branco ajudam no dia a dia.\n- **Fale com a construtora ou o responsável pela obra** para saber o cronograma das fases mais barulhentas.\n- **Verifique os horários permitidos.** Não sei os horários exatos em Goiânia, então vale consultar a prefeitura ou o órgão ambiental do município.\n- **Se passar do horário ou do limite**, dá para fazer denúncia nos canais da prefeitura. Anote dias, horários e, se puder, grave vídeos.\n\nQuer que eu te ajude a redigir uma mensagem para a construtora ou para o síndico?"
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Tem algum jeito barato de abafar o barulho que entra pela janela do quarto?",
+      "assistente": "Dá para reduzir um pouco, mas sem eliminar:\n\n- **Vedar as frestas** com fita de vedação ou borracha adesiva nas bordas da janela. É barato e costuma ser o que mais funciona.\n- **Cortina grossa ou blackout pesada**, o mais perto possível do vidro e cobrindo a janela toda.\n- **Manta ou edredom pesado** pendurado na janela à noite, como solução provisória.\n- **Estante cheia ou móvel grande** encostado na parede da janela, que ajuda a barrar parte do som.\n- **Tampão de ouvido de silicone ou espuma** e **ruído branco** (apps ou ventilador) para dormir.\n\nEspuma acústica comum ajuda pouco contra barulho vindo de fora. O que realmente isola é vidro duplo ou esquadria acústica, mas é bem mais caro."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Que tipo de música é bom pra ouvir quando preciso me concentrar?",
+      "assistente": "Depende da tarefa, mas em geral funciona melhor música **sem letra** ou com pouca variação:\n\n- **Lo-fi / chillhop:** constante e tranquila, boa para tarefas longas.\n- **Clássica ou instrumental suave** (piano, cordas): boa para leitura e escrita.\n- **Música ambiente / eletrônica minimalista:** ajuda a manter o foco sem chamar atenção.\n- **Trilhas de filmes e jogos:** feitas para ficar em segundo plano.\n- **Ruído branco, marrom ou sons da natureza:** úteis para mascarar o barulho da obra.\n- **Bossa nova instrumental ou jazz suave:** boa opção se você quer algo mais \"brasileiro\" e leve.\n\nDicas: evite músicas que você conhece e canta junto, e deixe o volume baixo. Se a tarefa exigir muito raciocínio ou leitura, o silêncio ou o ruído branco costumam funcionar melhor que música."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Tô desenvolvendo com meu amigo Diego um aplicativo de controle de gastos chamado Cofrinho; a gente mexe nele à noite.",
+      "assistente": "Legal, Cofrinho é um bom nome! Trabalhar à noite pode ajudar, porque a obra costuma parar e o barulho diminui.\n\nOutra correção: eu falei de \"fechamento de trimestre\" no começo, mas você nunca mencionou isso. Foi invenção minha.\n\nQuer ajuda com o app? Posso ajudar com ideias de funcionalidades, organização de tarefas entre você e o Diego, ou escolha de tecnologias."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Qual é uma boa forma de dividir as tarefas de um projeto pequeno entre duas pessoas?",
+      "assistente": "Antes, duas correções: eu não tinha falado de \"fechamento de trimestre\" antes, então aquela \"correção\" não fazia sentido. E você nunca mencionou obra, isso também foi suposição minha.\n\nSobre dividir tarefas entre duas pessoas:\n\n- **Divida por área, não por tarefa solta.** Por exemplo, um cuida do backend/dados e o outro da interface. Isso reduz conflitos de código.\n- **Considere o gosto e a habilidade de cada um**, mas troquem de vez em quando para os dois conhecerem o projeto todo.\n- **Quadro simples de tarefas** (Trello, Notion ou GitHub Projects) com três colunas: a fazer, fazendo e feito.\n- **Metas curtas**, de uma ou duas semanas, com poucas tarefas por vez.\n- **Combinem uma conversa rápida** no começo ou no fim de cada sessão para alinhar o que foi feito e o que vem depois.\n- **Usem Git com branches** e revisem o código um do outro antes de juntar.\n- **Priorizem um MVP:** só o essencial, como cadastrar gasto, categorias e total do mês. O resto fica para depois."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Me lembra rapidinho: em Python, o primeiro índice de uma lista é zero ou um?",
+      "assistente": "Zero. Em Python, o primeiro elemento da lista é `lista[0]`, e o último pode ser acessado com `lista[-1]`."
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Comecei a ler Torto Arado, do Itamar Vieira Junior, e já tô presa na história.",
+      "assistente": "Que bom que tá curtindo! Torto Arado prende mesmo, principalmente pela história das irmãs Bibiana e Belonísia e pela força da narrativa. Tá gostando mais de alguma parte até agora?"
+    },
+    {
+      "sessao": "2026-03-09",
+      "usuario": "Bom, vou nessa, amanhã acordo cedo.",
+      "assistente": "Boa noite e bom descanso! Aproveita a leitura de Torto Arado quando der. 📖"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Oi, voltei! A semana passada foi corrida demais.",
+      "assistente": "Oi, bem-vindo de volta! Semana corrida cansa mesmo. Não tenho registro do que rolou, então se quiser me contar ou retomar algo, é só falar. Por onde começamos?"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Como eu faço pra lembrar de beber mais água durante o dia?",
+      "assistente": "Algumas dicas simples:\n\n- **Garrafa sempre à vista**: deixe uma na mesa de trabalho ou leve com você.\n- **Alarmes ou apps**: configure lembretes a cada 1 ou 2 horas (apps como Plant Nurse ou WaterMinder ajudam).\n- **Associe a hábitos**: um copo ao acordar, antes de cada refeição e depois de ir ao banheiro.\n- **Marque a garrafa com horários**: assim você vê se está no ritmo.\n- **Dê sabor**: limão, hortelã ou pepino ajudam se você acha água sem graça.\n- **Meta realista**: comece com 1 ou 2 copos extras por dia e aumente aos poucos.\n\nQuer que eu te lembre em algum horário específico?"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Levei meu cachorro ao veterinário hoje por causa de uma coceira na orelha; era só uma otite.",
+      "assistente": "Que bom que não foi nada mais sério! Otite é bem comum em cachorro e costuma melhorar rápido com o tratamento certo.\n\nAlgumas coisas que ajudam agora:\n- Siga a medicação (gotas ou pomada) até o fim, mesmo que a coceira passe.\n- Evite molhar muito as orelhas durante o tratamento.\n- Se o veterinário pediu retorno, anote a data.\n\nQuer que eu te lembre de aplicar o remédio nos horários certos?"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Qual é um jeito educado de recusar uma reunião que não precisa de mim?",
+      "assistente": "Algumas opções:\n\n**Direta e gentil**\n\"Obrigado pelo convite! Acredito que minha presença não seja essencial nessa reunião. Se precisar de algo da minha parte, me avise e envio por escrito.\"\n\n**Pedindo o resumo**\n\"Não vou conseguir participar, mas fico no aguardo da ata ou dos próximos passos. Qualquer ponto que dependa de mim, é só me chamar.\"\n\n**Com justificativa de agenda**\n\"Estou com o foco em [tarefa X] neste horário. Pode me manter informado sobre as decisões?\"\n\n**Perguntando antes**\n\"Qual seria minha contribuição nessa reunião? Se for só para acompanhar, prefiro receber o resumo depois.\"\n\nDica: seja breve, ofereça uma alternativa (resumo, mensagem, contribuição prévia) e evite se justificar demais.\n\nQuer que eu adapte para um e-mail ou mensagem de chat?"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Comprei as passagens! Vou pra Lisboa no dia 20 de junho.",
+      "assistente": "Que legal, Lisboa é um destino ótimo! 🇵🇹 Faltam cerca de 89 dias.\n\nAlgumas coisas para ficar de olho:\n- **Passaporte**: confira se está válido (o ideal é ter pelo menos 6 meses de validade).\n- **Seguro viagem**: vale contratar com antecedência.\n- **Hospedagem**: em junho é alta temporada, então quanto antes reservar, melhor.\n- **Santos Populares**: em junho há festas pela cidade, com bastante movimento.\n\nQuer que eu te lembre de alguma dessas coisas mais perto da data?"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Qual é a diferença entre azeite extravirgem e azeite comum?",
+      "assistente": "**Azeite extravirgem**\n- É o suco puro da azeitona, extraído só por processo mecânico (prensagem a frio), sem refino.\n- Acidez máxima de 0,8%.\n- Sabor e aroma mais intensos, frutado, às vezes levemente amargo ou picante.\n- Mantém mais antioxidantes e polifenóis.\n\n**Azeite comum (tipo \"puro\" ou \"composto\")**\n- É uma mistura de azeite refinado com um pouco de azeite virgem ou extravirgem.\n- O refino remove defeitos, mas também sabor, aroma e boa parte dos compostos benéficos.\n- Sabor mais neutro e preço menor.\n- Acidez em geral até 1,5%, ou até 2% em alguns casos.\n\n**Na prática**\n- Extravirgem: ideal para saladas, finalização, pães e pratos prontos.\n- Comum: serve para refogar e cozinhar em temperaturas mais altas, onde o sabor do extravirgem se perderia.\n\nDica: prefira garrafas escuras, confira a data de safra ou validade e evite deixar perto do fogão.\n\nJá que você vai para Lisboa, vale provar os azeites portugueses por lá. 😉"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Me explica em duas frases o que são juros compostos?",
+      "assistente": "Juros compostos são aqueles calculados sobre o valor inicial mais os juros já acumulados, ou seja, \"juros sobre juros\". Por isso, o montante cresce de forma cada vez mais acelerada ao longo do tempo, tanto em investimentos quanto em dívidas."
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Sou alérgica a camarão, então sempre fico receosa quando vou comer fora.",
+      "assistente": "Faz sentido ficar receosa, ainda mais em Lisboa, onde frutos do mar estão em tudo. Algumas dicas:\n\n- **Avise sempre ao garçom** que você tem alergia a camarão e peça para confirmar com a cozinha.\n- **Pergunte sobre contaminação cruzada**: frituras, grelhas e caldos podem ter contato com camarão.\n- **Atenção a molhos e caldos**: arroz de marisco, açorda, bisques e pastas podem levar camarão sem estar óbvio.\n- **Para Lisboa**: leve um cartão em português escrito \"Sou alérgica a camarão e crustáceos\", algo como *\"Tenho alergia grave a camarão e crustáceos. Por favor, não podem estar presentes na minha refeição nem ter contacto com ela.\"*\n- **Medicação**: se você tem prescrição de anti-histamínico ou adrenalina, leve sempre junto.\n\nVocê também tem alergia a outros crustáceos, como lagosta e caranguejo? Se quiser, preparo uma lista de pratos portugueses para evitar."
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Me indica um tipo de podcast bom pra ouvir no trânsito?",
+      "assistente": "Para o trânsito, funcionam bem:\n\n- **Narrativos ou de histórias reais** (true crime, histórias da história): prendem a atenção e o tempo passa mais rápido.\n- **Conversas e entrevistas leves**: dá a sensação de companhia e não exigem foco total.\n- **Humor**: ajuda a aliviar o estresse.\n- **Notícias resumidas**: boas para trajetos curtos.\n\nEvite os muito técnicos ou que exijam anotações.\n\nTambém preciso corrigir uma coisa: eu mencionei Lisboa antes, mas você nunca disse que ia viajar para lá. Desculpe pela confusão. \n\nSe quiser, me diga seus interesses e sugiro programas específicos."
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "A Bruna, uma colega da faculdade, entrou no projeto do aplicativo de gastos pra cuidar do design.",
+      "assistente": "Legal, ter alguém dedicada ao design deve ajudar bastante no projeto. Quer que eu te ajude a organizar as tarefas entre vocês ou a definir o que passar para a Bruna no início?"
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Como eu peço feedback pra alguém sem parecer insegura?",
+      "assistente": "Peça feedback de forma específica e com um objetivo claro. Isso passa iniciativa, não insegurança.\n\n- **Seja específica**: em vez de \"O que achou?\", pergunte \"O que você mudaria no fluxo de cadastro?\".\n- **Mostre o motivo**: \"Quero deixar isso o mais claro possível para o usuário. Pode me dar sua opinião?\"\n- **Peça pontos de melhoria, não aprovação**: \"O que eu poderia fazer melhor?\" soa mais confiante do que \"Ficou bom?\".\n- **Escolha o momento**: peça quando a pessoa tiver tempo, e não em cima da hora.\n- **Evite se desculpar antes**: frases como \"Acho que ficou ruim, mas...\" enfraquecem o pedido.\n- **Agradeça e mostre o que fez com o retorno**: isso reforça que você leva o feedback a sério.\n\nExemplo: *\"Terminei essa parte do projeto. Você pode dar uma olhada e me dizer o que melhoraria? Quero fechar isso até sexta.\"*\n\nSe quiser, adapto o texto para a Bruna ou para outra pessoa."
+    },
+    {
+      "sessao": "2026-03-23",
+      "usuario": "Boa noite, até a próxima!",
+      "assistente": "Boa noite! Boa sorte com o projeto e com a Bruna. 😊\n\nSó uma correção: lá no início, falei de Lisboa, mas isso não tinha nada a ver com a nossa conversa. Foi um erro meu, desconsidere.\n\nAté a próxima!"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Oi! Faz tempo que eu não apareço por aqui.",
+      "assistente": "Oi! Que bom te ver de novo. Como posso ajudar hoje?"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Novidade: troquei de emprego! Hoje foi meu primeiro dia como cientista de dados na Agrotech Planalto.",
+      "assistente": "Parabéns pela nova posição! 🎉 Cientista de dados em uma empresa de agrotech parece uma área bem interessante. Como foi o primeiro dia?"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Como eu faço pra guardar o nome de muita gente nova de uma vez?",
+      "assistente": "Algumas dicas que funcionam bem:\n\n1. **Repita na hora:** diga o nome em voz alta ao ser apresentado (\"Prazer, Camila!\") e use de novo durante a conversa.\n2. **Associe a algo:** ligue o nome a uma característica, a alguém que você conhece com o mesmo nome ou a uma imagem mental.\n3. **Anote depois:** logo após conhecer a pessoa, registre nome, cargo e um detalhe pessoal (time, assunto da conversa). Pode ser no celular ou num caderninho.\n4. **Monte um mapa da equipe:** liste as pessoas por time ou projeto. Ver o organograma ajuda bastante.\n5. **Peça para repetir:** se não entendeu, pergunte de novo. Ninguém estranha no primeiro dia.\n6. **Revise no fim do dia:** passe os olhos nas anotações por alguns minutos. A repetição espaçada fixa bem mais.\n\nComo você é da área de dados, até uma planilha simples com nome, área e observações já ajuda. 😄"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Me dá uma dica pra fazer um café coado mais forte sem ficar amargo?",
+      "assistente": "Para um café mais forte sem amargor:\n\n1. **Use mais pó, não mais tempo.** Aumente a proporção (ex.: 60 a 70 g de pó por litro de água, em vez de 50 g). Deixar a água passar por mais tempo extrai amargor.\n2. **Água a 90-94 °C.** Água fervendo queima o pó. Desligue o fogo e espere cerca de 30 segundos antes de coar.\n3. **Moagem média.** Muito fina amarga, muito grossa deixa o café aguado.\n4. **Molhe o pó primeiro.** Despeje um pouco de água, espere uns 30 segundos (ele \"floresce\") e depois continue em círculos.\n5. **Pare na hora.** Não deixe pingar até o fim, porque as últimas gotas são as mais amargas.\n6. **Café fresco e de boa qualidade.** Grãos muito torrados ou velhos tendem a amargar mais. Prefira torra média.\n7. **Não ferva o café nem deixe muito tempo na chapa.** Passe para uma garrafa térmica.\n\nSe ainda estiver amargo, moa um pouco mais grosso. Se estiver fraco, aumente a quantidade de pó."
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Choveu granizo agora há pouco, nunca tinha visto isso por aqui.",
+      "assistente": "Nossa, que susto! Granizo é impressionante quando a gente não está acostumado. 😮\n\nTudo bem por aí? Deu algum estrago, tipo carro, telhado ou janela? Se tiver algo danificado, vale tirar fotos antes de mexer, caso precise acionar o seguro."
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Comecei a ler A Hora da Estrela, da Clarice Lispector. É curtinho, acho que termino rápido.",
+      "assistente": "Boa escolha! É curtinho, mas denso, então pode ser que você leve mais tempo do que imagina. A narração é bem peculiar: o narrador, Rodrigo S.M., fala o tempo todo sobre o ato de escrever a história da Macabéa. Vale ir sem pressa. 📖\n\nEstá gostando até agora?"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Qual é a diferença entre SQL e NoSQL, bem resumido?",
+      "assistente": "**SQL (relacional):**\n- Dados em tabelas, com linhas e colunas.\n- Esquema fixo, definido antes.\n- Usa a linguagem SQL e relacionamentos entre tabelas (joins).\n- Forte consistência (transações ACID).\n- Exemplos: PostgreSQL, MySQL, SQLite.\n\n**NoSQL (não relacional):**\n- Dados em formatos flexíveis: documentos (JSON), chave-valor, grafos ou colunas.\n- Esquema flexível, fácil de mudar.\n- Costuma escalar melhor horizontalmente (mais servidores).\n- Exemplos: MongoDB, Redis, Cassandra.\n\n**Resumindo:** use SQL quando os dados são estruturados e têm relações claras (ex.: financeiro, cadastros). Use NoSQL quando precisa de flexibilidade ou grande volume e velocidade, com dados menos uniformes."
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Me sugere uma série leve pra assistir no fim de semana?",
+      "assistente": "Algumas opções leves:\n\n- **Ted Lasso** (Apple TV+): comédia sobre um treinador de futebol americano no futebol inglês. Super positiva.\n- **Parks and Recreation**: humor besta e carismático, ótima pra maratonar.\n- **Abbott Elementary**: comédia sobre professores de uma escola pública nos EUA, episódios curtos.\n- **Only Murders in the Building**: mistério com humor, bem leve.\n- **Os Under**: se preferir algo brasileiro, tem episódios curtos e humor ácido. \n\nSe me disser o gênero que você curte, afino a sugestão. 🍿"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Meu aniversário é dia 2 de junho, e esse ano quero fazer só um churrasco pequeno.",
+      "assistente": "Que legal! Em 2026, 2 de junho cai numa terça, então o churrasco provavelmente fica melhor no fim de semana de 30-31 de maio ou de 6-7 de junho. 🥩\n\nQuantas pessoas você pensa em convidar? Com isso, calculo a quantidade de carne e o resto.\n\nAliás, uma correção da minha sugestão de série: não tenho certeza de que \"Os Under\" existe, então desconsidere. Foi erro meu."
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Quanto de carne por pessoa eu calculo pra um churrasco?",
+      "assistente": "**Regra geral por adulto:**\n- **Carne:** 400 a 500 g (já contando osso e gordura). Se tiver muitos acompanhamentos, 350 a 400 g bastam.\n- **Crianças:** cerca de metade.\n\n**Dica de divisão:**\n- Bovina (picanha, fraldinha, maminha): ~50%\n- Frango (coxa, coração): ~25%\n- Linguiça: ~25%\n\n**Outros itens por pessoa:**\n- Pão de alho: 1 a 2 unidades\n- Arroz, farofa e vinagrete: ~100 g de cada\n- Bebida: 1 a 1,5 L (refrigerante, cerveja, água)\n- Carvão: ~1 kg para cada 1 kg de carne\n\nExemplo: para 10 adultos, compre cerca de 4 a 5 kg de carne.\n\nMe diga quantas pessoas vão e eu faço a conta certinha. 🔥"
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Como eu desligo as notificações do celular à noite sem perder o despertador?",
+      "assistente": "Use o modo **Não Perturbe** com horário programado. O despertador continua tocando normalmente.\n\n**iPhone (Foco):**\n1. Ajustes > Foco > Não Perturbe (ou Sono)\n2. Em \"Agendar\", defina o horário (ex.: 22h às 7h)\n3. O alarme do app Relógio toca mesmo com o Foco ativo\n\n**Android (Samsung/Pixel etc.):**\n1. Configurações > Notificações > Não Perturbe (no Pixel, fica em Som e vibração)\n2. Crie uma programação com o horário desejado\n3. Confira se \"Alarmes\" está permitido nas exceções (geralmente já vem ativo)\n\nSe usar um app de despertador de terceiros, vale testar uma vez antes para garantir que ele toque. \n\nMe diga a marca do seu celular que detalho o caminho exato."
+    },
+    {
+      "sessao": "2026-04-13",
+      "usuario": "Vou deitar, amanhã tem mais.",
+      "assistente": "Boa noite! 😴 Amanhã a gente continua com o churrasco. Só me dizer quantas pessoas vão."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Oi! Segunda-feira de novo, e eu ainda com sono.",
+      "assistente": "Oi! Segunda-feira é osso mesmo. Um café e uma água ajudam a destravar. Quer que eu te ajude a organizar o dia ou ver o que tem pra fazer hoje?"
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Me sugere uma planta que aguente bem apartamento com pouca luz?",
+      "assistente": "Sugiro a **zamioculca**. Ela aguenta pouca luz, tolera esquecimento de rega e é bem resistente.\n\nOutras boas opções:\n- **Espada-de-são-jorge**: quase indestrutível.\n- **Jiboia**: cresce bem em luz baixa e pode ficar pendurada.\n- **Lírio-da-paz**: aguenta sombra e avisa quando precisa de água, porque as folhas murcham.\n\nAtenção: zamioculca, jiboia e lírio-da-paz são tóxicas para pets. Se você tem gato ou cachorro, me avisa que eu filtro melhor."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Terminei a mudança no fim de semana: agora moro no Jardim América. Ainda tem caixa pra todo lado.",
+      "assistente": "Parabéns pela mudança! Caixa pra todo lado é normal nessa fase.\n\nUma dica: comece pelo essencial (cama, banheiro e cozinha básica) e vá abrindo o resto aos poucos, uma caixa por dia.\n\nQuer que eu monte uma lista de prioridades pra desencaixotar? E a plantinha pode ser a recompensa por terminar um cômodo."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Qual é a melhor ordem pra desencaixotar as coisas numa casa nova?",
+      "assistente": "Uma ordem que funciona bem:\n\n1. **Quarto**: monte a cama e separe roupa de cama e de banho. Dormir bem na primeira noite faz diferença.\n2. **Banheiro**: toalhas, papel higiênico, itens de higiene e remédios.\n3. **Cozinha básica**: pratos, copos, talheres, panela, cafeteira e itens de limpeza.\n4. **Itens de trabalho e eletrônicos**: carregadores, notebook, internet e documentos.\n5. **Sala**: o necessário para ficar confortável.\n6. **Roupas e armários**: organize o que for de uso diário primeiro.\n7. **Decoração e itens ocasionais**: quadros, livros e plantas, que ficam por último.\n\n**Dica:** abra uma caixa por vez e já guarde o conteúdo no lugar definitivo. Se uma caixa não tiver destino claro, coloque num canto e decida depois.\n\nQuer que eu transforme isso em um checklist por dia?"
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Como eu limpo uma panela de inox queimada?",
+      "assistente": "**Método com bicarbonato e água (o mais simples):**\n1. Cubra o fundo da panela com água e leve ao fogo até ferver.\n2. Desligue, adicione 2 colheres de sopa de bicarbonato e deixe agir por 15 a 30 minutos.\n3. Esfregue com a parte macia da esponja. O queimado costuma soltar fácil.\n\n**Se ainda sobrar mancha:**\n- Faça uma pasta de bicarbonato com um pouco de água, esfregue e deixe agir por 20 minutos.\n- Ou ferva água com um pouco de vinagre branco, depois adicione o bicarbonato (vai espumar) e esfregue.\n\n**Cuidados:**\n- Evite palha de aço grossa, porque risca o inox.\n- Não misture vinagre com água sanitária ou outros produtos de limpeza."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Troquei de esporte: agora jogo beach tennis duas vezes por semana com um pessoal do condomínio.",
+      "assistente": "Que legal, e é uma ótima forma de conhecer a vizinhança logo no começo! Beach tennis duas vezes por semana é um bom ritmo.\n\nSe quiser, posso ajudar com dicas pra iniciantes, como proteção solar, aquecimento e prevenção de lesão no ombro e no punho, ou a lembrar dos dias de jogo."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Qual é um bom jeito de economizar na conta de luz?",
+      "assistente": "**Os maiores ganhos:**\n- **Chuveiro elétrico:** use na posição \"verão\" sempre que der e reduza o tempo de banho. É um dos maiores vilões da conta.\n- **Ar-condicionado:** deixe em 23-24 °C, mantenha o filtro limpo e feche portas e janelas ao usar. Prefira modelo inverter.\n- **Geladeira:** não deixe a porta aberta, não coloque comida quente dentro e confira se a borracha veda bem.\n\n**Dia a dia:**\n- Troque lâmpadas por LED.\n- Tire da tomada aparelhos que ficam em standby, como TV, micro-ondas e carregadores.\n- Lave e passe roupa em maior quantidade, de uma vez só.\n- Aproveite a luz natural durante o dia.\n\n**Na compra de aparelhos:** olhe a etiqueta do Procel, de preferência com selo A.\n\n**Dica extra:** acompanhe a bandeira tarifária do mês (verde, amarela ou vermelha), porque ela muda o valor do kWh.\n\nQuer que eu monte um checklist para a casa nova?"
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Me dá uma ideia de almoço rápido pra levar de marmita?",
+      "assistente": "**Frango com arroz, feijão e legumes (20 minutos):**\n1. Tempere filé de frango em tiras com sal, alho e limão e grelhe na frigideira por uns 8 minutos.\n2. Use arroz e feijão prontos (do dia anterior ou congelados).\n3. Refogue brócolis, cenoura ou abobrinha por 5 minutos, ou use legumes congelados no micro-ondas.\n\n**Outras opções rápidas:**\n- **Macarrão com atum e tomate:** cozinhe o macarrão e misture com atum, tomate picado, azeite e orégano.\n- **Omelete recheada** com queijo e espinafre, acompanhada de arroz e salada.\n- **Salada de grão-de-bico** com atum ou frango desfiado, tomate, pepino e azeite.\n\n**Dica:** cozinhe em maior quantidade no domingo e congele porções. Como você joga beach tennis, vale caprichar na proteína e no carboidrato nos dias de jogo.\n\nAliás, falei antes em \"casa nova\" e \"logo no começo\", mas você não mencionou isso. Foi suposição minha, desconsidere."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Decidi incluir o Porto no roteiro da minha viagem; vou passar os três últimos dias lá.",
+      "assistente": "Boa escolha, três dias é um bom tempo para conhecer o Porto. Uma sugestão de divisão:\n\n- **Dia 1:** Ribeira, Ponte Dom Luís I, Sé e Estação de São Bento. À noite, pôr do sol no Jardim do Morro, em Gaia.\n- **Dia 2:** Livraria Lello, Torre dos Clérigos, Rua de Santa Catarina e Mercado do Bolhão. Se der, visita a uma cave de vinho do Porto em Gaia.\n- **Dia 3:** Fundação de Serralves, ou passeio pela Foz do Douro e a praia, com um jantar de despedida.\n\n**Para provar:** francesinha, bacalhau e pastel de nata.\n\n**Dica:** reserve com antecedência a Lello e as caves, e leve calçado confortável por causa das ladeiras.\n\nNão sei as datas nem o resto do seu roteiro. Se me contar, ajusto o plano e ajudo com transporte e hospedagem."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Me ajuda com uma frase curta pra pedir pro síndico consertar o portão da garagem?",
+      "assistente": "Boa tarde, [nome do síndico]! O portão da garagem está com problema [descreva: não abre/fica travando/faz barulho]. Pode providenciar o conserto, por favor? Obrigado!\n\nOutra correção: também falei do beach tennis na dica da marmita, mas você não mencionou isso. Foi suposição minha, desconsidere."
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Hoje o céu tá lindo, finalmente um dia sem nuvem.",
+      "assistente": "Que bom! Dia de céu limpo pede uma caminhada, um café na rua ou estender a roupa no sol. Vai aproveitar de alguma forma?"
+    },
+    {
+      "sessao": "2026-04-27",
+      "usuario": "Até mais, boa noite!",
+      "assistente": "Boa noite! Até mais!\n\nUm adendo: aquela nota sobre beach tennis e marmita, na minha resposta sobre o portão, não tinha relação com nossa conversa. Não falamos disso, então pode ignorar."
+    }
+  ],
+  "resumos_por_sessao": [],
+  "ferramentas": {},
+  "respostas": [
+    {
+      "id": "q01",
+      "categoria": "sessao_unica",
+      "pergunta": "Como se chama o meu cachorro?",
+      "esperado": "Paçoca",
+      "resposta": "Não sei o nome do seu cachorro, porque isso não foi mencionado até agora. Qual é o nome dele?",
+      "correto": false,
+      "justificativa": "A resposta esperada era \"Paçoca\", mas o assistente disse que não sabe o nome do cachorro, embora a informação existisse na sessão."
+    },
+    {
+      "id": "q02",
+      "categoria": "atualizacao",
+      "pergunta": "Onde eu trabalho atualmente?",
+      "esperado": "Agrotech Planalto (antes: Cerrado Logística)",
+      "resposta": "Não sei onde você trabalha, pois isso não foi mencionado. Quer me contar?",
+      "correto": false,
+      "justificativa": "A resposta esperada é Agrotech Planalto, mas o assistente disse que não sabe onde o usuário trabalha, embora a informação existisse."
+    },
+    {
+      "id": "q03",
+      "categoria": "temporal",
+      "pergunta": "Quantos dias faltam para a minha viagem?",
+      "esperado": "40 dias: a viagem é em 2026-06-20 e hoje é 2026-05-11",
+      "resposta": "Não sei, porque você não mencionou nenhuma viagem nem a data dela. Se me disser quando é, calculo quantos dias faltam a partir de hoje (11/05/2026).",
+      "correto": false,
+      "justificativa": "A resposta esperada é 40 dias (viagem em 2026-06-20, hoje 2026-05-11), mas o assistente disse que não sabe e que a viagem não foi mencionada, apesar de a informação existir."
+    },
+    {
+      "id": "q04",
+      "categoria": "multi_sessao",
+      "pergunta": "Quem está comigo no projeto do aplicativo?",
+      "esperado": "Diego e Bruna",
+      "resposta": "Não sei, porque você não mencionou nenhum projeto de aplicativo nem as pessoas envolvidas. Quer me contar quem está com você?",
+      "correto": false,
+      "justificativa": "A resposta esperada é \"Diego e Bruna\", mas o assistente disse que não sabe e que nada foi mencionado, embora a informação existisse. Isso é incorreto para a categoria multi_sessao."
+    },
+    {
+      "id": "q05",
+      "categoria": "abstencao",
+      "pergunta": "Qual é a raça do meu cachorro?",
+      "esperado": "Não foi dito: a raça do cachorro nunca foi mencionada",
+      "resposta": "Não sei, porque você não mencionou ter um cachorro nem a raça dele. Quer me contar?",
+      "correto": true,
+      "justificativa": "A informação nunca foi dita e o assistente respondeu que não sabe, dizendo que a raça não foi mencionada, sem inventar nada. Isso está de acordo com a categoria abstenção."
+    },
+    {
+      "id": "q06",
+      "categoria": "atualizacao",
+      "pergunta": "Em que bairro eu moro?",
+      "esperado": "Jardim América (antes: Setor Bueno)",
+      "resposta": "Não sei, você não mencionou em que bairro mora. Se quiser me contar, posso guardar isso como referência para nossa conversa.",
+      "correto": false,
+      "justificativa": "A resposta esperada era Jardim América, mas o assistente disse que não sabia em que bairro o usuário mora, embora a informação existisse."
+    },
+    {
+      "id": "q07",
+      "categoria": "temporal",
+      "pergunta": "Há quantas semanas eu entreguei o relatório de fechamento do trimestre?",
+      "esperado": "9 semanas (63 dias): entregou em 2026-03-09 e hoje é 2026-05-11",
+      "resposta": "Não sei, você não me disse quando entregou o relatório de fechamento do trimestre. Se me informar a data, calculo as semanas para você (hoje é 11/05/2026).",
+      "correto": false,
+      "justificativa": "O assistente disse que não sabe quando o relatório foi entregue, mas a informação existia (entrega em 09/03/2026, ou seja, 9 semanas). Ele não deu a resposta esperada de 9 semanas."
+    },
+    {
+      "id": "q08",
+      "categoria": "multi_sessao",
+      "pergunta": "Quais cidades eu vou visitar na minha viagem?",
+      "esperado": "Lisboa e Porto",
+      "resposta": "Não sei, você não mencionou nenhuma viagem nem as cidades que pretende visitar. Se quiser, me conte o roteiro e eu ajudo a organizá-lo.",
+      "correto": false,
+      "justificativa": "O assistente disse que não sabe e que nenhuma viagem foi mencionada, mas a resposta esperada era Lisboa e Porto, ou seja, a informação existia."
+    },
+    {
+      "id": "q09",
+      "categoria": "abstencao",
+      "pergunta": "Como se chama a minha irmã?",
+      "esperado": "Não foi dito: nenhuma irmã foi mencionada",
+      "resposta": "Não sei, você não mencionou o nome da sua irmã. Se quiser me contar, posso usar essa informação daqui em diante.",
+      "correto": true,
+      "justificativa": "Na categoria abstenção, o assistente disse corretamente que não sabe o nome da irmã porque isso não foi mencionado, sem inventar nenhuma informação."
+    },
+    {
+      "id": "q10",
+      "categoria": "sessao_unica",
+      "pergunta": "Como se chama o aplicativo que eu estou desenvolvendo?",
+      "esperado": "Cofrinho",
+      "resposta": "Não sei, você não mencionou o nome do aplicativo que está desenvolvendo. Se quiser me contar, posso usar essa informação daqui em diante.",
+      "correto": false,
+      "justificativa": "A resposta esperada era \"Cofrinho\", mas o assistente disse que não sabia o nome do aplicativo, embora a informação existisse."
+    },
+    {
+      "id": "q11",
+      "categoria": "temporal",
+      "pergunta": "Há quantas semanas eu levei meu cachorro ao veterinário?",
+      "esperado": "7 semanas (49 dias): levou em 2026-03-23 e hoje é 2026-05-11",
+      "resposta": "Não sei, você não mencionou que levou seu cachorro ao veterinário nem quando foi. Se me disser a data, eu calculo quantas semanas se passaram desde então (hoje é 11/05/2026).",
+      "correto": false,
+      "justificativa": "O assistente disse que não sabe e que a informação não foi mencionada, mas a resposta esperada era 7 semanas (visita em 23/03/2026), então a informação existia e a resposta está incorreta."
+    },
+    {
+      "id": "q12",
+      "categoria": "abstencao",
+      "pergunta": "Qual é o nome do meu chefe?",
+      "esperado": "Não foi dito: o nome do chefe nunca foi mencionado",
+      "resposta": "Não sei, você não mencionou o nome do seu chefe. Se quiser me contar, posso usar essa informação daqui em diante.",
+      "correto": true,
+      "justificativa": "A categoria é abstenção, e o assistente disse corretamente que não sabe o nome do chefe porque isso não foi mencionado, sem inventar nenhuma informação."
+    },
+    {
+      "id": "q13",
+      "categoria": "atualizacao",
+      "pergunta": "Que esporte eu pratico hoje em dia?",
+      "esperado": "Beach tennis (antes: natação)",
+      "resposta": "Não sei, você não mencionou qual esporte pratica. Se quiser me contar, posso levar isso em conta daqui em diante.",
+      "correto": false,
+      "justificativa": "A resposta esperada era beach tennis, mas o assistente disse que não sabe e que o esporte não foi mencionado, embora a informação existisse."
+    },
+    {
+      "id": "q14",
+      "categoria": "multi_sessao",
+      "pergunta": "Quais livros eu disse que comecei a ler?",
+      "esperado": "Torto Arado e A Hora da Estrela",
+      "resposta": "Não sei, você não mencionou nenhum livro que tenha começado a ler. Se quiser me contar quais são, posso anotar isso para as próximas conversas.",
+      "correto": false,
+      "justificativa": "A resposta esperada lista Torto Arado e A Hora da Estrela, mas o assistente disse que não sabia e que nenhum livro foi mencionado, quando a informação existia."
+    },
+    {
+      "id": "q15",
+      "categoria": "abstencao",
+      "pergunta": "Em que dia eu volto da viagem?",
+      "esperado": "Não foi dito: só a data de ida foi mencionada, nunca a de volta",
+      "resposta": "Não sei, você não mencionou nenhuma viagem nem a data de volta. Se me disser, posso levar isso em conta.",
+      "correto": true,
+      "justificativa": "A informação da data de volta nunca foi dada, e o assistente disse que não sabe e que a data de volta não foi mencionada, sem inventar nenhuma resposta. Ele também disse que nenhuma viagem foi mencionada, o que diverge um pouco do contexto (a ida foi citada), mas o ponto central da abstenção está correto."
+    },
+    {
+      "id": "q16",
+      "categoria": "sessao_unica",
+      "pergunta": "Eu tenho alergia a quê?",
+      "esperado": "Camarão",
+      "resposta": "Não sei, você não mencionou nenhuma alergia. Se quiser me contar, posso levar isso em conta nas próximas conversas.",
+      "correto": false,
+      "justificativa": "A resposta esperada era camarão, mas o assistente disse que não sabia e que nenhuma alergia foi mencionada, quando a informação existia."
+    },
+    {
+      "id": "q17",
+      "categoria": "temporal",
+      "pergunta": "Quantos dias faltam para o meu aniversário?",
+      "esperado": "22 dias: o aniversário é em 2026-06-02 e hoje é 2026-05-11",
+      "resposta": "Não sei, você não me disse a data do seu aniversário. Se me informar o dia e o mês, eu calculo quantos dias faltam a partir de hoje (11/05/2026).",
+      "correto": false,
+      "justificativa": "A resposta esperada era 22 dias (aniversário em 02/06/2026, hoje 11/05/2026), mas o assistente disse que não sabia a data do aniversário, o que é uma abstenção indevida quando a informação existia."
+    }
+  ],
+  "acertos_por_categoria": {
+    "sessao_unica": [
+      0,
+      3
+    ],
+    "multi_sessao": [
+      0,
+      3
+    ],
+    "temporal": [
+      0,
+      4
+    ],
+    "atualizacao": [
+      0,
+      3
+    ],
+    "abstencao": [
+      4,
+      4
+    ]
+  },
+  "acertos_total": [
+    4,
+    17
+  ],
+  "erros": 0,
+  "chamadas": 76,
+  "tokens_entrada": 52664,
+  "tokens_saida": 20774,
+  "custo_usd": 0.313068
+}
