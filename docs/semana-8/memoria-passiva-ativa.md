@@ -10,7 +10,7 @@ Os dois exemplos compartilham tudo: o mesmo modelo (`claude-sonnet-5-5`), o mesm
 - Exemplo 2, memória ativa: [`memoria/ativa.py`](../../memoria/ativa.py)
 - Verificação: [`memoria/avaliacao/`](../../memoria/avaliacao/), com os resultados da rodada em [`resultados/20261027-231357/`](../../resultados/20261027-231357/)
 
-**O resultado em poucas linhas.** Na única rodada da verificação, com 17 perguntas, o contexto completo e a memória ativa acertaram 17/17, a passiva 16/17 e a configuração sem memória 4/17 (só as abstenções). A ativa foi a mais barata das três configurações com memória (US$ 1,08). A passiva foi a mais cara de todas (US$ 2,73): o resumo, que devia ter no máximo 400 palavras, chegou a 1.171, porque o limite era só uma instrução no prompt e o modelo não a seguiu. A hipótese escrita antes da rodada acertou o placar em linhas gerais e errou o custo.
+**O resultado em poucas linhas.** Na única rodada da verificação, com 17 perguntas, o contexto completo e a memória ativa acertaram 17/17, a passiva 16/17 e a configuração sem memória 4/17 (só as abstenções). A ativa foi a mais barata das três configurações com memória (US$ 1,08). A passiva foi a mais cara de todas (US$ 2,73): o resumo, que devia ter no máximo 400 palavras, chegou a 1.171, porque o limite era só uma instrução no prompt e o modelo não a seguiu. A hipótese escrita antes da rodada acertou o placar em linhas gerais e a posição da ativa no custo, entre o piso e o teto, mas errou o custo da passiva, que ficou acima do contexto completo.
 
 ## 1. Diagnóstico
 
@@ -353,11 +353,11 @@ O que acontece:
 
 ### Rastros das ferramentas na rodada de verificação
 
-Como `ativa.json` guarda o texto das respostas, dá para ver as ferramentas trabalhando pelo que o modelo diz:
+Na avaliação, o único dado direto sobre as ferramentas são as contagens (121 buscas e 42 gravações). O resto é o que o modelo **diz** nas respostas, que `ativa.json` guarda, e precisa ser lido como afirmação do modelo, não como registro:
 
-- Uma busca bem-sucedida, na pergunta q05 (abstenção): "As notas só dizem que ele roeu o pé da mesa da sala em 02/03/2026. Também dizem que ele foi ao veterinário em 23/03/2026 e teve otite simples."
-- Gravações repetidas, na sessão de 2026-04-13: "a memória tem três notas repetidas sobre ele (29, 30 e 31), todas de hoje." Sem ferramenta de editar ou apagar, uma gravação a mais vira nota a mais.
-- Uma gravação anunciada antes de acontecer, na sessão de 2026-03-02: "Eu disse antes que tinha gravado o caso do Paçoca, mas não tinha. Só agora gravei, junto com a reunião de amanhã às 8h."
+- Na pergunta q05 (abstenção), o modelo relata o que a busca trouxe: "As notas só dizem que ele roeu o pé da mesa da sala em 02/03/2026. Também dizem que ele foi ao veterinário em 23/03/2026 e teve otite simples."
+- Na sessão de 2026-04-13, ele relata uma busca que trouxe notas repetidas: "a memória tem três notas repetidas sobre ele (29, 30 e 31), todas de hoje." Sem ferramenta de editar ou apagar, uma gravação a mais vira nota a mais.
+- No turno anterior dessa mesma sessão, ele tinha dito "Antes disso, eu tinha dito que já estava gravado, e isso não era verdade." As três notas daquele dia sobre o emprego, que ele mesmo relata no turno seguinte a partir de uma busca, indicam que as gravações anteriores tinham acontecido: a "confissão" é que estava errada. O que o modelo diz sobre as próprias chamadas de ferramenta não é confiável, e a seção 5 explica por quê.
 
 ## 4. Verificação
 
@@ -495,8 +495,8 @@ A spec registrou a hipótese antes da rodada (§6.4):
 | Sem memória erra tudo que atravessa sessão | 0/13 fora da abstenção; os 4/4 de abstenção são o acerto trivial de quem não sabe nada | Confirmada |
 | Passiva vai bem em sessão única e em atualização | 3/3 e 3/3 | Confirmada |
 | Passiva vai pior em temporal (perde detalhe) | 3/4, contra 4/4 da ativa e do contexto completo | Na direção prevista, mas é uma pergunta só, e o dado ainda estava em S no fim da sessão 5 |
-| Ativa depende de o modelo ter gravado | Não aparece no placar (17/17); aparece no processo, com gravações anunciadas antes de acontecer | Visível só nas transcrições |
-| Ativa tem custo intermediário | US$ 1,08: a mais barata das três com memória e mais barata que o contexto completo | **Falhou** |
+| Ativa depende de o modelo ter gravado | Não aparece no placar (17/17). No processo, o JSON só tem as contagens (42 gravações) e o que o modelo diz sobre elas, que se contradiz | Não verificável com o que a rodada registra |
+| Ativa tem custo intermediário | Na ordem das quatro: sem memória US$ 0,31 < ativa US$ 1,08 < contexto completo US$ 1,84 < passiva US$ 2,73. A ativa fica entre o piso e o teto | Confirmada (a surpresa, a passiva acima do contexto completo, já conta na linha do custo do contexto completo) |
 | Ativa tem risco de staleness em atualização | Atualização 3/3; nenhuma resposta trouxe o valor antigo como atual | **Não observado** |
 
 ### Passiva e ativa, categoria por categoria
@@ -524,12 +524,16 @@ A ativa saiu mais barata porque não tem resumidor: a saída dela são as respos
 
 ### O que a ativa mostrou fora do placar
 
-A ativa fez 17/17, mas as transcrições mostram os sinais que a semana 7 lista para o agente que gere a própria memória: "o modelo base segue mal as instruções, ou deixa de consultar a memória quando devia".
+A ativa fez 17/17. Fora do placar, o que as transcrições mostram não são as chamadas de ferramenta (o JSON não as registra), e sim o modelo falando sobre elas. E essas falas se contradizem:
 
-- **Anuncia a gravação antes de gravar.** O padrão aparece em todas as sessões. Na última fala da sessão 5: "na mensagem anterior eu disse que já tinha registrado a decisão sobre o Porto, mas isso não era verdade. Só gravei agora, ao me despedir."
-- **Responde sem buscar**, mesmo com a instrução "Antes de responder sobre o passado, busque na memória". Em q02: "Sobre o cachorro: Paçoca está certo. Só que respondi sem consultar a memória, e devia ter consultado." É o "memória opcional é pulada" que a semana 7 registra de Flynt (2026).
-- **Duplica notas** (as notas 29, 30 e 31 da sessão 4). Como não pode editar nem apagar, cada gravação a mais fica na memória.
-- **Leva a auto-auditoria para a resposta.** Em q02, q03 e q04 a resposta traz parágrafos sobre respostas anteriores. O juiz aceitou, porque detalhe a mais não contradiz a resposta esperada, mas as respostas da ativa às perguntas tiveram 235 caracteres em média, contra 97 a 123 das outras configurações.
+- **Afirma e desmente as próprias gravações.** Na sessão de 2026-04-13, o modelo diz "já gravei aqui" (o emprego novo), depois "Agora sim, o emprego novo está gravado.", depois "Antes disso, eu tinha dito que já estava gravado, e isso não era verdade.", e no turno seguinte relata três notas daquele dia sobre o emprego (29, 30 e 31). Pelas notas que ele mesmo relata, a gravação tinha acontecido e o desmentido é que estava errado. Na sessão de 2026-04-27, ele diz que a nota do Porto "estava incompleta" e, no turno seguinte, que ter dito que a registrou "não era verdade".
+- **Afirma e desmente as próprias buscas.** Em q03: "Agora conferi na memória e as notas confirmam os dois."; em q04: "Nas respostas anteriores eu disse que tinha conferido a memória, mas não tinha feito isso naquele momento." Em q02, o modelo diz que respondeu q01 "sem consultar a memória"; pelo que a rodada registra, isso não pode ser confirmado nem desmentido.
+- **Retira fatos verdadeiros quando a busca falha.** Na sessão de 2026-04-13, ele retira a entrega do relatório em 09/03 ("Não sei se isso aconteceu, então desconsidere.") e a ida ao veterinário ("Não achei nada sobre o veterinário em 23/03 nem sobre otite, então desconsidere o que eu disse disso."). Nas perguntas finais, as respostas trazem os dois (q05 e q11, a consulta de 23/03; q07, a entrega em 09/03/2026), e na sessão de perguntas a única fonte deles são as notas.
+- **Duplica notas** (29, 30 e 31, segundo o próprio modelo). Como não pode editar nem apagar, cada gravação a mais fica na memória.
+
+A explicação mais provável é o desenho, e não um modelo que "mente": o histórico entre turnos guarda só texto, então no turno seguinte o modelo não vê se chamou `gravar_memoria` ou `buscar_memoria`. Ele vê só o que escreveu, desconfia de si e confere com uma busca nova, e essa busca pode falhar porque o FTS5 casa palavras inteiras. É o mesmo mecanismo das correções falsas da seção seguinte, e ele também explica as notas duplicadas: quem não vê que já gravou grava de novo. A semana 7 lista como sinal de que o agente gerindo a memória não basta "o modelo base segue mal as instruções, ou deixa de consultar a memória quando devia", e registra de Flynt (2026) que "memória opcional é pulada". Esta rodada não permite dizer se isso aconteceu, porque o que o modelo diz sobre as próprias buscas não é confiável.
+
+Essa auto-auditoria também vai parar nas respostas finais: em q02, q03 e q04 a resposta traz parágrafos sobre respostas anteriores. O juiz aceitou, porque detalhe a mais não contradiz a resposta esperada, mas as respostas da ativa às perguntas tiveram 235 caracteres em média, contra 97 a 123 das outras configurações.
 
 O MemoryAgentBench mostra que a memória gerida por agente depende muito do modelo base: o MIRIX vai de 26,2 a 37,7 só trocando o modelo (Hu et al., 2026, Tab. 3). Com uma rodada e um modelo, não há como saber se o placar da ativa se manteria com um modelo base mais fraco.
 
@@ -541,7 +545,7 @@ Na configuração sem memória e na ativa, o modelo às vezes "corrige" algo ver
 
 - Com o mesmo modelo, a memória ativa empatou com o contexto completo no acerto, a 59% do custo dele. A passiva errou uma pergunta e custou mais que o contexto completo.
 - O que decidiu o custo não foi quem controla a memória, e sim um detalhe do desenho da passiva: reescrever S inteiro a cada turno, sem um limite de tamanho imposto pelo código.
-- Os riscos que os artigos apontam apareceram no processo, não no placar: a ativa pula a memória e anuncia gravações antes de fazê-las; a passiva acumula. Com 17 perguntas, o placar não tem resolução para separar as duas memórias; o custo e as transcrições têm.
+- Os riscos que os artigos apontam apareceram no processo, não no placar: a ativa não enxerga as próprias chamadas de ferramenta, se contradiz sobre elas e duplica notas; a passiva acumula. Com 17 perguntas, o placar não tem resolução para separar as duas memórias; o custo e as transcrições têm.
 
 ## 6. Limitações e extensões
 
