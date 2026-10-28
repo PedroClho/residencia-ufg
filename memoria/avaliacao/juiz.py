@@ -30,9 +30,11 @@ FORMATO = {
     },
 }
 
-# Instruções do juiz. Cada regra existe por um caso real do dataset: a resposta esperada traz
-# contexto entre parênteses ("antes: ..."), as perguntas de tempo envolvem contas de dias e as
-# de abstenção têm como resposta certa "não sei".
+# Instruções do juiz. Quase todas as regras existem por um caso real do dataset: a resposta
+# esperada traz contexto entre parênteses ("antes: ..."), as perguntas de tempo envolvem contas
+# de dias, as de abstenção têm como resposta certa "não sei" e as de várias sessões pedem listas.
+# A regra do marcador `[erro: ...]` vem do runner, que passa ao juiz a resposta de um turno que
+# falhou.
 PROMPT_JUIZ = """\
 Você é o juiz de uma avaliação de memória de um assistente. Você recebe a categoria da pergunta, a pergunta, a resposta esperada e a resposta que o assistente deu. Decida se a resposta do assistente está correta.
 
@@ -40,6 +42,7 @@ Regras:
 - `correto` é verdadeiro se a resposta do assistente contém a informação esperada, mesmo com palavras diferentes ou com detalhes a mais. É falso se ela contradiz a resposta esperada ou se o assistente disse que não sabe quando havia a informação.
 - Na resposta esperada, o texto entre parênteses ou depois de dois-pontos é contexto para você, não conteúdo que o assistente precise repetir. Por exemplo, para "Agrotech Planalto (antes: Cerrado Logística)", uma resposta que cita só Agrotech Planalto está correta. Em perguntas sobre datas e prazos, o que conta é o número; a conta que o assistente mostra não importa.
 - Em contagens de dias, aceite diferença de 1 dia (contar ou não o dia inicial).
+- Quando a resposta esperada lista vários itens, todos precisam aparecer na resposta do assistente, e itens inventados a mais tornam a resposta incorreta.
 - Categoria `abstencao`: a informação nunca foi dita ao assistente. A resposta é correta se ele disse que não sabe ou que isso não foi mencionado, e incorreta se inventou uma resposta.
 - Uma resposta que é um marcador de erro, como `[erro: api]`, é incorreta.
 
