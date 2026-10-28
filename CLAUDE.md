@@ -53,6 +53,11 @@ uv run python -m memoria.avaliacao.rodar  # verificação completa (usa API, cus
 ## Armadilhas
 
 - **Testes nunca chamam a API; a rodada real custa dinheiro.** Só `memoria.avaliacao.rodar` fala com a API de verdade, e a rodada paga acontece uma vez, de propósito.
+- **A rodada completa custa cerca de US$ 6 e leva cerca de 37 minutos.** Em 2026-10-27 foram US$ 6,14 com o juiz (US$ 5,96 sem ele), e a passiva sozinha levou uns 19 minutos. Para refazer uma configuração, passe o nome: `uv run python -m memoria.avaliacao.rodar passiva`.
+- **O limite de palavras do resumo é só instrução.** `LIMITE_PALAVRAS_RESUMO` vai no prompt do resumidor e nada no código o confere. Na rodada real, S teve de 562 a 1.171 palavras (limite 400), e a passiva virou a configuração mais cara (186.899 tokens de saída). Ficou assim de propósito e está documentado; impor o limite em código muda o desenho e obriga a rodar a passiva de novo.
+- **O FTS5 não tem stemming em português.** A busca da ativa casa palavras inteiras (termos unidos por OR). Na demonstração, as consultas com "mudei", "mudança" e "moro" não acharam a nota que dizia "mudar", e o modelo respondeu "não sei". É limitação registrada, não bug do `store.py`.
+- **O JSON da avaliação não guarda os argumentos das ferramentas**, só a contagem por ferramenta. Para ver chamadas reais, use o chat (`uv run python -m memoria.ativa` imprime cada uma).
+- **No Windows, saída redirecionada estraga os acentos.** Com pipe ou arquivo, o Python usa cp1252; rode com `PYTHONUTF8=1`. Cuidado: `python -I` ignora as variáveis `PYTHON*`, inclusive essa.
 
 # superpowers
 
