@@ -18,7 +18,7 @@ Residência-ufg/
 │   ├── ativa.py                     # EXEMPLO 2: loop com ferramentas (+ chat no __main__)
 │   └── avaliacao/
 │       ├── dataset.json             # conversa sintética + perguntas (fixture estática)
-│       ├── baselines.py             # sem memória, contexto completo (duas funções)
+│       ├── baselines.py             # sem memória, contexto completo (duas classes)
 │       ├── juiz.py                  # juiz LLM (uma função)
 │       └── rodar.py                 # roda as 4 configurações e gera a tabela
 ├── tests/                           # pytest, tudo com cliente fake

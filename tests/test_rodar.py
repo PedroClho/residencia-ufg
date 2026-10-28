@@ -264,3 +264,12 @@ def test_main_custo_total_inclui_o_juiz_e_a_coluna_da_tabela_nao(tmp_path, monke
     assert r["custo_usd"] == pytest.approx(r["chamadas"] * 1.0)  # sem o juiz
     esperado = r["custo_usd"] + len(r["respostas"]) * 1.0  # com uma chamada do juiz por pergunta
     assert f"Custo total estimado: US$ {esperado:.2f}" in capsys.readouterr().out
+
+
+def test_main_nome_desconhecido_sai_sem_criar_pasta(tmp_path, monkeypatch, fake):
+    # Um nome digitado errado não pode deixar uma pasta vazia em resultados/ nem chamar o modelo.
+    llm, juiz = _preparar_main(monkeypatch, tmp_path, fake)
+    with pytest.raises(SystemExit, match="configuração desconhecida: passivo"):
+        rodar.main(["passivo"])
+    assert list(tmp_path.iterdir()) == []
+    assert llm.contador.chamadas == 0 and juiz.contador.chamadas == 0

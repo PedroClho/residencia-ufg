@@ -17,7 +17,7 @@ from memoria import config
 class Contador:
     """Soma chamadas e tokens das respostas da API.
 
-    O runner lê o contador ao fim de cada configuração e o zera para a próxima, então cada
+    O runner zera o contador no início de cada configuração e o lê no fim dela, então cada
     configuração tem o seu custo medido em separado.
     """
 

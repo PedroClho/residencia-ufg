@@ -40,8 +40,9 @@ Decisões de desenho:
 - O histórico entre turnos guarda só texto: a mensagem do usuário e a resposta final do assistente.
   Os pedidos de ferramenta e seus resultados existem só dentro do turno, onde o conteúdo do
   assistente é reenviado inteiro e sem edição até o fim, como a API exige. Consequência: no turno
-  seguinte o modelo não vê o resultado das buscas anteriores e precisa buscar de novo, como no
-  MemGPT. Um turno com erro (`[erro: ...]`) entra no histórico como resposta do assistente.
+  seguinte o modelo não vê o resultado das buscas anteriores e precisa buscar de novo. Nisso o
+  exemplo difere do MemGPT, cuja fila FIFO guarda também as chamadas de função e seus resultados.
+  Um turno com erro (`[erro: ...]`) entra no histórico como resposta do assistente.
 
 Para conversar pelo terminal: `python -m memoria.ativa`.
 """

@@ -34,7 +34,7 @@ def resposta_texto(texto: str, entrada: int = 10, saida: int = 5) -> SimpleNames
 def resposta_ferramenta(nome: str | list[tuple[str, dict, str]], entrada: dict | None = None, id: str = "tu_1") -> SimpleNamespace:
     """Resposta em que o modelo pede ferramenta (stop_reason "tool_use").
 
-    Uma chamada: resposta_ferramenta("gravar_memoria", {"texto": "x"}, id="tu_1").
+    Uma chamada: resposta_ferramenta("gravar_memoria", {"conteudo": "x"}, id="tu_1").
     Várias no mesmo turno (chamadas paralelas): resposta_ferramenta([(nome, entrada, id), ...]).
     """
     chamadas = nome if isinstance(nome, list) else [(nome, entrada, id)]

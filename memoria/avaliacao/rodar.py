@@ -171,8 +171,10 @@ def main(argv: list[str]) -> None:
     """Roda a verificação e grava os arquivos em `resultados/<AAAAMMDD-HHMMSS>/`.
 
     Sem argumento roda as quatro configurações; com um argumento (o nome de uma delas) roda só
-    essa. Não há outras opções. Cada JSON é gravado assim que a configuração termina, então uma
-    falha numa configuração mais adiante não perde as anteriores, que já custaram dinheiro.
+    essa. Não há outras opções. Um nome que não é de configuração encerra com uma mensagem antes de
+    criar a pasta, para um erro de digitação não deixar uma pasta vazia em `resultados/`. Cada JSON
+    é gravado assim que a configuração termina, então uma falha numa configuração mais adiante não
+    perde as anteriores, que já custaram dinheiro.
 
     No fim imprime a tabela e o "Custo total estimado": a soma do custo das configurações com o
     custo do juiz, ou seja, o que a chave da API realmente gastou. A coluna de custo da tabela
@@ -180,6 +182,8 @@ def main(argv: list[str]) -> None:
     """
     dataset = json.loads(Path(__file__).with_name("dataset.json").read_text(encoding="utf-8"))
     nomes = argv[:1] or list(CONFIGURACOES)
+    if nomes[0] not in CONFIGURACOES:
+        sys.exit(f"configuração desconhecida: {nomes[0]} (use {', '.join(CONFIGURACOES)})")
     llm = LLM()
     llm_juiz = LLM()
 
@@ -188,7 +192,7 @@ def main(argv: list[str]) -> None:
 
     resultados = []
     for nome in nomes:
-        print(f"Rodando {nome}...")  # a rodada paga é longa: uma linha por configuração mostra que anda
+        print(f"Rodando {nome}...", flush=True)  # a rodada paga é longa: uma linha por configuração mostra que anda
         resultado = rodar_configuracao(nome, dataset, llm, llm_juiz)
         (pasta / f"{nome}.json").write_text(json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8")
         resultados.append(resultado)

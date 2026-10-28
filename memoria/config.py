@@ -16,7 +16,8 @@ K = 6
 # alto não custa nada a mais.
 MAX_TOKENS = 16000
 
-# Memória passiva: o resumo da conversa nunca passa deste tamanho (o resumidor é instruído a isso).
+# Memória passiva: tamanho pedido ao resumidor para o resumo. É só instrução no prompt; nada no
+# código confere (na rodada de 2026-10-27, S chegou a 1.171 palavras).
 LIMITE_PALAVRAS_RESUMO = 400
 
 # Memória ativa: quantas notas a busca devolve, no máximo, por consulta.

@@ -139,8 +139,9 @@ class Passiva:
 
         O resumidor recebe S e o turno que acabou de acontecer, e devolve o S' inteiro. Só se grava
         S' se ele veio com texto e sem erro: uma falha (ou uma saída vazia, por exemplo cortada
-        antes de escrever o resumo) apagaria a memória inteira. Com falha, S anterior fica e o
-        próximo turno tenta de novo.
+        antes de escrever o resumo) apagaria a memória inteira. Com falha, fica o S anterior, e o
+        conteúdo deste turno não entra no resumo: o resumidor do turno seguinte recebe só o turno
+        seguinte (este continua na janela enquanto couber nela).
         """
         system = PROMPT_RESUMIDOR.format(limite=LIMITE_PALAVRAS_RESUMO, data=self.data)
         conteudo = (
