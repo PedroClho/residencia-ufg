@@ -79,6 +79,18 @@ def test_texto_ignora_blocos_que_nao_sao_texto():
     assert texto(msg) == "ab"
 
 
+def test_texto_vazio_e_erro():
+    # Texto vazio entraria no histórico como mensagem do assistente, e a API rejeita conteúdo vazio.
+    assert texto(resposta_texto("")) == "[erro: resposta vazia]"
+    assert texto(resposta_texto("  \n ")) == "[erro: resposta vazia]"
+
+
+def test_texto_sem_nenhum_bloco_de_texto_e_erro():
+    msg = resposta_texto("")
+    msg.content = [SimpleNamespace(type="tool_use", name="x", input={}, id="tu_1")]
+    assert texto(msg) == "[erro: resposta vazia]"
+
+
 def test_texto_de_none_e_erro():
     assert texto(None) == "[erro: api]"
 

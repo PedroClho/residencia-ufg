@@ -91,14 +91,18 @@ class LLM:
 
 
 def texto(msg) -> str:
-    """Extrai o texto de uma resposta; falha de API ou recusa viram a resposta literal `[erro: ...]`.
+    """Extrai o texto de uma resposta; falha de API, recusa ou texto vazio viram `[erro: ...]`.
 
     Assim o turno sempre tem um texto para guardar no histórico, mesmo quando não houve resposta
-    (`msg` é None) ou quando a API recusou o pedido. Blocos que não são texto (raciocínio, pedidos
-    de ferramenta) são ignorados.
+    (`msg` é None), quando a API recusou o pedido ou quando o modelo não escreveu nada (por
+    exemplo, parou depois de só raciocinar). Blocos que não são texto (raciocínio, pedidos de
+    ferramenta) são ignorados. Texto vazio nunca é devolvido: ele entraria no histórico como
+    mensagem do assistente, e a API rejeita conteúdo vazio, o que faria falhar todos os turnos
+    seguintes.
     """
     if msg is None:
         return "[erro: api]"
     if msg.stop_reason == "refusal":
         return "[erro: recusa]"
-    return "".join(bloco.text for bloco in msg.content if bloco.type == "text")
+    resposta = "".join(bloco.text for bloco in msg.content if bloco.type == "text")
+    return resposta if resposta.strip() else "[erro: resposta vazia]"
