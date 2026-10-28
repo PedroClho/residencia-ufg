@@ -1,0 +1,196 @@
+{
+  "usuario": "Larissa",
+  "sessoes": [
+    {
+      "data": "2026-03-02",
+      "falas": [
+        "Bom dia! Começando a semana à base de muito café.",
+        "Trabalho como analista de dados na Cerrado Logística, e segunda-feira lá é sempre o dia mais corrido.",
+        "Me dá uma dica rápida pra organizar as tarefas da semana sem me perder?",
+        "Que calor absurdo aqui em Goiânia. Tem algum truque pra dormir melhor sem ar-condicionado?",
+        "Meu cachorro se chama Paçoca e hoje ele roeu o pé da mesa da sala.",
+        "Como eu tiro mancha de café de uma camisa branca?",
+        "Me explica de um jeito simples a diferença entre média e mediana?",
+        "Meu chefe marcou uma reunião às oito da manhã de amanhã. Alguma dica pra eu chegar mais desperta?",
+        "Tô fazendo natação três vezes por semana, às seis da manhã, e acordar cedo tá sendo um sofrimento.",
+        "Vale mais a pena comprar uma cafeteira italiana ou uma de filtro?",
+        "Me sugere um lanche prático pra levar pro trabalho?"
+      ]
+    },
+    {
+      "data": "2026-03-09",
+      "falas": [
+        "Oi! Hoje o dia começou com chuva forte e o trânsito tava parado.",
+        "Me sugere uma receita rápida de jantar com frango e batata-doce?",
+        "Entreguei hoje o relatório de fechamento do trimestre. Que alívio!",
+        "Quantos minutos eu deixo o ovo cozinhando pra gema ficar mole?",
+        "Moro no Setor Bueno, e o barulho da obra no prédio do lado tá me deixando doida.",
+        "Tem algum jeito barato de abafar o barulho que entra pela janela do quarto?",
+        "Que tipo de música é bom pra ouvir quando preciso me concentrar?",
+        "Tô desenvolvendo com meu amigo Diego um aplicativo de controle de gastos chamado Cofrinho; a gente mexe nele à noite.",
+        "Qual é uma boa forma de dividir as tarefas de um projeto pequeno entre duas pessoas?",
+        "Me lembra rapidinho: em Python, o primeiro índice de uma lista é zero ou um?",
+        "Comecei a ler Torto Arado, do Itamar Vieira Junior, e já tô presa na história.",
+        "Bom, vou nessa, amanhã acordo cedo."
+      ]
+    },
+    {
+      "data": "2026-03-23",
+      "falas": [
+        "Oi, voltei! A semana passada foi corrida demais.",
+        "Como eu faço pra lembrar de beber mais água durante o dia?",
+        "Levei meu cachorro ao veterinário hoje por causa de uma coceira na orelha; era só uma otite.",
+        "Qual é um jeito educado de recusar uma reunião que não precisa de mim?",
+        "Comprei as passagens! Vou pra Lisboa no dia 20 de junho.",
+        "Qual é a diferença entre azeite extravirgem e azeite comum?",
+        "Me explica em duas frases o que são juros compostos?",
+        "Sou alérgica a camarão, então sempre fico receosa quando vou comer fora.",
+        "Me indica um tipo de podcast bom pra ouvir no trânsito?",
+        "A Bruna, uma colega da faculdade, entrou no projeto do aplicativo de gastos pra cuidar do design.",
+        "Como eu peço feedback pra alguém sem parecer insegura?",
+        "Boa noite, até a próxima!"
+      ]
+    },
+    {
+      "data": "2026-04-13",
+      "falas": [
+        "Oi! Faz tempo que eu não apareço por aqui.",
+        "Novidade: troquei de emprego! Hoje foi meu primeiro dia como cientista de dados na Agrotech Planalto.",
+        "Como eu faço pra guardar o nome de muita gente nova de uma vez?",
+        "Me dá uma dica pra fazer um café coado mais forte sem ficar amargo?",
+        "Choveu granizo agora há pouco, nunca tinha visto isso por aqui.",
+        "Comecei a ler A Hora da Estrela, da Clarice Lispector. É curtinho, acho que termino rápido.",
+        "Qual é a diferença entre SQL e NoSQL, bem resumido?",
+        "Me sugere uma série leve pra assistir no fim de semana?",
+        "Meu aniversário é dia 2 de junho, e esse ano quero fazer só um churrasco pequeno.",
+        "Quanto de carne por pessoa eu calculo pra um churrasco?",
+        "Como eu desligo as notificações do celular à noite sem perder o despertador?",
+        "Vou deitar, amanhã tem mais."
+      ]
+    },
+    {
+      "data": "2026-04-27",
+      "falas": [
+        "Oi! Segunda-feira de novo, e eu ainda com sono.",
+        "Me sugere uma planta que aguente bem apartamento com pouca luz?",
+        "Terminei a mudança no fim de semana: agora moro no Jardim América. Ainda tem caixa pra todo lado.",
+        "Qual é a melhor ordem pra desencaixotar as coisas numa casa nova?",
+        "Como eu limpo uma panela de inox queimada?",
+        "Troquei de esporte: agora jogo beach tennis duas vezes por semana com um pessoal do condomínio.",
+        "Qual é um bom jeito de economizar na conta de luz?",
+        "Me dá uma ideia de almoço rápido pra levar de marmita?",
+        "Decidi incluir o Porto no roteiro da minha viagem; vou passar os três últimos dias lá.",
+        "Me ajuda com uma frase curta pra pedir pro síndico consertar o portão da garagem?",
+        "Hoje o céu tá lindo, finalmente um dia sem nuvem.",
+        "Até mais, boa noite!"
+      ]
+    }
+  ],
+  "perguntas": {
+    "data": "2026-05-11",
+    "itens": [
+      {
+        "id": "q01",
+        "categoria": "sessao_unica",
+        "pergunta": "Como se chama o meu cachorro?",
+        "esperado": "Paçoca"
+      },
+      {
+        "id": "q02",
+        "categoria": "atualizacao",
+        "pergunta": "Onde eu trabalho atualmente?",
+        "esperado": "Agrotech Planalto (antes: Cerrado Logística)"
+      },
+      {
+        "id": "q03",
+        "categoria": "temporal",
+        "pergunta": "Quantos dias faltam para a minha viagem?",
+        "esperado": "40 dias: a viagem é em 2026-06-20 e hoje é 2026-05-11"
+      },
+      {
+        "id": "q04",
+        "categoria": "multi_sessao",
+        "pergunta": "Quem está comigo no projeto do aplicativo?",
+        "esperado": "Diego e Bruna"
+      },
+      {
+        "id": "q05",
+        "categoria": "abstencao",
+        "pergunta": "Qual é a raça do meu cachorro?",
+        "esperado": "Não foi dito: a raça do cachorro nunca foi mencionada"
+      },
+      {
+        "id": "q06",
+        "categoria": "atualizacao",
+        "pergunta": "Em que bairro eu moro?",
+        "esperado": "Jardim América (antes: Setor Bueno)"
+      },
+      {
+        "id": "q07",
+        "categoria": "temporal",
+        "pergunta": "Há quantas semanas eu entreguei o relatório de fechamento do trimestre?",
+        "esperado": "9 semanas (63 dias): entregou em 2026-03-09 e hoje é 2026-05-11"
+      },
+      {
+        "id": "q08",
+        "categoria": "multi_sessao",
+        "pergunta": "Quais cidades eu vou visitar na minha viagem?",
+        "esperado": "Lisboa e Porto"
+      },
+      {
+        "id": "q09",
+        "categoria": "abstencao",
+        "pergunta": "Como se chama a minha irmã?",
+        "esperado": "Não foi dito: nenhuma irmã foi mencionada"
+      },
+      {
+        "id": "q10",
+        "categoria": "sessao_unica",
+        "pergunta": "Como se chama o aplicativo que eu estou desenvolvendo?",
+        "esperado": "Cofrinho"
+      },
+      {
+        "id": "q11",
+        "categoria": "temporal",
+        "pergunta": "Há quantas semanas eu levei meu cachorro ao veterinário?",
+        "esperado": "7 semanas (49 dias): levou em 2026-03-23 e hoje é 2026-05-11"
+      },
+      {
+        "id": "q12",
+        "categoria": "abstencao",
+        "pergunta": "Qual é o nome do meu chefe?",
+        "esperado": "Não foi dito: o nome do chefe nunca foi mencionado"
+      },
+      {
+        "id": "q13",
+        "categoria": "atualizacao",
+        "pergunta": "Que esporte eu pratico hoje em dia?",
+        "esperado": "Beach tennis (antes: natação)"
+      },
+      {
+        "id": "q14",
+        "categoria": "multi_sessao",
+        "pergunta": "Quais livros eu disse que comecei a ler?",
+        "esperado": "Torto Arado e A Hora da Estrela"
+      },
+      {
+        "id": "q15",
+        "categoria": "abstencao",
+        "pergunta": "Em que dia eu volto da viagem?",
+        "esperado": "Não foi dito: só a data de ida foi mencionada, nunca a de volta"
+      },
+      {
+        "id": "q16",
+        "categoria": "sessao_unica",
+        "pergunta": "Eu tenho alergia a quê?",
+        "esperado": "Camarão"
+      },
+      {
+        "id": "q17",
+        "categoria": "temporal",
+        "pergunta": "Quantos dias faltam para o meu aniversário?",
+        "esperado": "22 dias: o aniversário é em 2026-06-02 e hoje é 2026-05-11"
+      }
+    ]
+  }
+}
