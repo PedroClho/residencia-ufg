@@ -84,7 +84,7 @@ def fake():
 
 `resposta_ferramenta` deve aceitar também uma lista de tuplas para gerar vários `tool_use` no mesmo `content` (necessário para o teste de chamadas paralelas na Task 4).
 
-- [ ] **Step 6: Criar `README.md`** com título, uma frase do que é, e os cinco comandos da spec §4. Criar `CLAUDE.md` com: o que é o projeto (3 linhas), a árvore de §4 da spec, os comandos, a convenção "um exemplo = um arquivo", a armadilha "testes nunca chamam a API; a rodada real custa dinheiro", e a seção `# superpowers` copiada do `~/.claude/CLAUDE.md` global do autor.
+- [ ] **Step 6: Criar `README.md`** com título, uma frase do que é, e os cinco comandos da spec §4. O `CLAUDE.md` da raiz **já existe** (escrito em 2026-10-27 antes da execução): ler, não recriar. Só ajustar se algo deste task o contradisser.
 
 - [ ] **Step 7: Rodar `uv run pytest`** e confirmar `no tests ran` sem erro de import.
 

@@ -1,63 +1,93 @@
-# Memória passiva e memória ativa com LLM
+# Residência em IA (UFG): memória para agentes LLM
 
-Projeto didático da Residência em IA (UFG, semana 8): dois exemplos de memória para um LLM que diferem só em quem controla a leitura e a escrita.
-Passiva = o código decide (sumarização incremental). Ativa = o modelo decide (ferramentas `buscar_memoria` e `gravar_memoria`, estilo MemGPT).
-Uma verificação em miniatura compara os dois contra duas baselines (sem memória e contexto completo). Spec e plano em `docs/superpowers/`.
+Repositório da residência de Pedro Coelho no Bacharelado em IA da UFG. Tema: gestão de memória
+de longo prazo para agentes LLM. Guarda o processo semanal (termos de aceite e notas de leitura)
+e o código das entregas práticas.
 
-## Estrutura
+## Arquitetura
 
 ```
-Residência-ufg/
-├── RESIDENCIA/                      # documentos das semanas (existente, intocado)
-├── memoria/                         # pacote Python, 6 arquivos
-│   ├── __init__.py
-│   ├── config.py                    # MODELO, K, limites, caminho do banco (só constantes)
-│   ├── llm.py                       # único ponto que chama a API; soma tokens; aceita cliente fake
-│   ├── store.py                     # SQLite: resumo por conversa, notas com busca FTS5
-│   ├── passiva.py                   # EXEMPLO 1: sumarização incremental (+ chat no __main__)
-│   ├── ativa.py                     # EXEMPLO 2: loop com ferramentas (+ chat no __main__)
-│   └── avaliacao/
-│       ├── dataset.json             # conversa sintética + perguntas (fixture estática)
-│       ├── baselines.py             # sem memória, contexto completo (duas classes)
-│       ├── juiz.py                  # juiz LLM (uma função)
-│       └── rodar.py                 # roda as 4 configurações e gera a tabela
-├── tests/                           # pytest, tudo com cliente fake
-├── resultados/                      # saída da rodada final (versionada)
-├── docs/
-│   ├── semana-8/memoria-passiva-ativa.md    # documento da entrega
-│   └── superpowers/{specs,plans}/
-├── CLAUDE.md
-├── .claude/settings.json            # habilita superpowers
-├── pyproject.toml
-├── .env.example
-└── README.md                        # como rodar em 5 linhas
+RESIDENCIA/               documentos das semanas 1 a 7 (docx). Não editar: é o registro do processo.
+memoria/                  pacote Python da entrega da semana 8
+  config.py               só constantes: MODELO, K, limites, preços, SYSTEM_BASE
+  llm.py                  único ponto que chama a API da Anthropic; soma tokens; aceita cliente fake
+  store.py                SQLite: um resumo (tabela resumo) e notas com busca FTS5 (tabela notas)
+  passiva.py              EXEMPLO 1: memória passiva por sumarização incremental (chat no __main__)
+  ativa.py                EXEMPLO 2: memória ativa com ferramentas buscar/gravar, estilo MemGPT (chat no __main__)
+  avaliacao/
+    dataset.json          conversa sintética em 5 sessões + perguntas em 5 categorias (fixture estática)
+    baselines.py          SemMemoria e ContextoCompleto, mesma interface dos exemplos
+    juiz.py               juiz LLM com saída estruturada
+    rodar.py              roda as 4 configurações sobre o dataset e gera a tabela
+tests/                    pytest, tudo offline com o FakeCliente de tests/conftest.py
+resultados/               saída da rodada final da verificação (versionada)
+docs/semana-8/            documento da entrega
+docs/superpowers/         specs e plans (design aprovado e plano de implementação)
 ```
+
+As quatro configurações (sem memória, contexto completo, passiva, ativa) têm a mesma interface:
+`__init__(llm, store)`, `nova_sessao(data)`, `responder(mensagem) -> str`. Diferem só em quem
+controla a leitura e a escrita da memória. Isso é o ponto da entrega; não quebrar.
+
+Design: `docs/superpowers/specs/2026-10-27-memoria-passiva-ativa-design.md`.
+Plano: `docs/superpowers/plans/2026-10-27-memoria-passiva-ativa.md`.
 
 ## Comandos
 
 ```
 uv sync                                   # ambiente
-uv run pytest                             # gate de testes (sem API); vermelho bloqueia o ship
+uv run pytest                             # GATE DE TESTES (offline, sem API)
 uv run python -m memoria.passiva          # chat de terminal com o exemplo passivo
 uv run python -m memoria.ativa            # chat de terminal com o exemplo ativo
-uv run python -m memoria.avaliacao.rodar  # verificação completa (usa API, custa dinheiro)
+uv run python -m memoria.avaliacao.rodar  # verificação completa (USA A API, CUSTA DINHEIRO)
+uv run python -m memoria.avaliacao.rodar passiva   # só uma configuração
 ```
+
+Chave: `ANTHROPIC_API_KEY` no `.env` da raiz (ignorado pelo git). Modelo: `claude-sonnet-5-5`.
 
 ## Convenções
 
-- **Um exemplo = um arquivo.** `passiva.py` e `ativa.py` se leem de cima para baixo, sem camadas entre o exemplo e a chamada à API além do wrapper fino de `llm.py`. Sem flags nem caminhos alternativos que a entrega não usa.
-- **Idioma:** tudo que o modelo ou o professor lê (prompts, descrições de ferramentas, docs, docstrings) é PT-BR com acentos; nomes de código em PT-BR sem acento.
-- **Dependências:** só `anthropic` e `python-dotenv` (e `pytest` em dev). SQLite da biblioteca padrão.
-- **Testes** usam o cliente fake de `tests/conftest.py` (fixture `fake` e os construtores `resposta_texto`, `resposta_ferramenta`, `resposta_recusa`, `erro_api`).
+- **O mais simples que ainda ensina.** Cada exemplo é um arquivo que se lê de cima para baixo.
+  Sem camadas, sem flags, sem código para "extensão futura". Extensão vai para o documento.
+- **Um exemplo = um arquivo.** `passiva.py` e `ativa.py` são autocontidos além de `llm`, `store`
+  e `config`. Não extrair "utilitários comuns" entre eles.
+- **PT-BR com acentos** em tudo que o modelo lê (system prompts, descrições de ferramentas,
+  prompt do juiz) e em tudo que o professor lê (docstrings, docs). Identificadores sem acento.
+- **Histórico entre turnos guarda só texto.** Blocos de `tool_use`, `tool_result` e thinking não
+  atravessam turnos. Isso mantém a janela K idêntica entre configurações.
+- **Erro de API vira texto**: `[erro: api]`, `[erro: recusa]`, `[erro: limite de ferramentas]`,
+  `[erro: resposta vazia]`. `LLM.responder` nunca lança; devolve `None`. `texto(None)` é `[erro: api]`.
+- **Sem recursos extras da API**: sem `tool_choice` forçado, sem `thinking` explícito, sem
+  `fallbacks`, sem prompt caching. Um fallback para outro modelo contaminaria a comparação.
+- **Testes nunca chamam a API.** Injetar `FakeCliente`. Saída real de LLM nunca tem assert de
+  igualdade exata; a verificação real é "eval": roda, compara o número.
+- Commits em PT-BR com prefixo (`feat:`, `fix:`, `chore:`, `docs:`, `test:`). Sem
+  `Co-Authored-By`. Autor `Pedro Coelho <coelho@discente.ufg.br>`.
 
-## Armadilhas
+## Armadilhas conhecidas
 
-- **Testes nunca chamam a API; a rodada real custa dinheiro.** Só `memoria.avaliacao.rodar` fala com a API de verdade, e a rodada paga acontece uma vez, de propósito.
-- **A rodada completa custa cerca de US$ 6 e leva cerca de 37 minutos.** Em 2026-10-27 foram US$ 6,14 com o juiz (US$ 5,96 sem ele), e a passiva sozinha levou uns 19 minutos. Para refazer uma configuração, passe o nome: `uv run python -m memoria.avaliacao.rodar passiva`.
-- **O limite de palavras do resumo é só instrução.** `LIMITE_PALAVRAS_RESUMO` vai no prompt do resumidor e nada no código o confere. Na rodada real, S teve de 562 a 1.171 palavras (limite 400), e a passiva virou a configuração mais cara (186.899 tokens de saída). Ficou assim de propósito e está documentado; impor o limite em código muda o desenho e obriga a rodar a passiva de novo.
-- **O FTS5 não tem stemming em português.** A busca da ativa casa palavras inteiras (termos unidos por OR). Na demonstração, as consultas com "mudei", "mudança" e "moro" não acharam a nota que dizia "mudar", e o modelo respondeu "não sei". É limitação registrada, não bug do `store.py`.
-- **O JSON da avaliação não guarda os argumentos das ferramentas**, só a contagem por ferramenta. Para ver chamadas reais, use o chat (`uv run python -m memoria.ativa` imprime cada uma).
-- **No Windows, saída redirecionada estraga os acentos.** Com pipe ou arquivo, o Python usa cp1252; rode com `PYTHONUTF8=1`. Cuidado: `python -I` ignora as variáveis `PYTHON*`, inclusive essa.
+- `python -m memoria.avaliacao.rodar` gasta dinheiro de verdade. A rodada de 2026-10-27 custou
+  US$ 6,14 com o juiz (US$ 5,96 sem ele; a estimativa era US$ 3 a 5) e levou cerca de 37 minutos;
+  a passiva sozinha levou uns 19. Rodar a fumaça com `sem_memoria` antes da rodada completa.
+- FTS5 quebra com pontuação ou operadores na consulta. `store.buscar_notas` reduz a consulta a
+  palavras entre aspas unidas por `OR`; não passar a string crua para `MATCH`.
+- FTS5 não faz stemming em português: "viajei" não casa com "viagem". Limitação documentada.
+  Na demonstração, as consultas com "mudei", "mudança" e "moro" não acharam a nota que dizia
+  "mudar", e o modelo respondeu "não sei". Não é bug do `store.py`.
+- O exemplo passivo **não é RAG**. É context compression (sumarização). Usar o nome certo nos docs.
+- O resumidor reescreve S a cada turno. A proteção contra colapso de contexto é a estrutura fixa
+  de quatro seções e a instrução de editar, não a frequência. O limite de palavras é **só
+  instrução**: `LIMITE_PALAVRAS_RESUMO` vai no prompt e nada no código o confere. Na rodada real,
+  S teve de 562 a 1.171 palavras (limite 400) e a passiva virou a configuração mais cara
+  (186.899 tokens de saída). Impor o limite em código muda o desenho e obriga a rodar a passiva
+  de novo.
+- O JSON da avaliação não guarda os argumentos das ferramentas, só a contagem. Para ver chamadas
+  reais, use o chat (`uv run python -m memoria.ativa` imprime cada uma).
+- No Windows, saída redirecionada estraga os acentos (o Python usa cp1252 com pipe ou arquivo);
+  rode com `PYTHONUTF8=1`. `python -I` ignora as variáveis `PYTHON*`, inclusive essa.
+- Datas: todas as configurações recebem `Hoje é AAAA-MM-DD` no prompt. Sem isso, perguntas
+  temporais são impossíveis para qualquer uma e a comparação fica injusta.
+- `RESIDENCIA/` contém a cópia em docx dos documentos do Google Docs. É arquivo, não fonte.
 
 # superpowers
 
