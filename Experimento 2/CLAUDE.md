@@ -81,6 +81,10 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
 - **O agente de embedding do autor esquece o que passa de ~285 mil tokens** (`input_length_limit`
   300.000, `buffer_length` 15.000): descarta os chunks mais antigos. É proposital, por fidelidade ao
   artigo; o documento final registra (item 5 das Correções no desenho).
+- **`uv sync` falha com "tls handshake eof":** o DNS do roteador às vezes resolve
+  `files.pythonhosted.org` para 100.127.127.77 (CGNAT); o TCP abre e o TLS morre. O `pypi.org` resolve
+  normal. Conserto: DNS público (1.1.1.1 ou 8.8.8.8) no adaptador de rede, ou um proxy CONNECT local
+  temporário com `HTTPS_PROXY`.
 - **Os modelos da OpenAI saem do ar:** GPT-4o-mini, GPT-4o e GPT-4.1-mini em 2027-01-14; GPT-5-mini
   em 2026-12-11. Todas as rodadas com OpenAI terminam até 2026-12-20. Claude 3.7 Sonnet e Gemini 2.0
   Flash, usados no artigo, já não existem.
