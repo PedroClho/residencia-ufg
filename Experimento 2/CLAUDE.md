@@ -34,17 +34,43 @@ resultados/              rodadas e livro_caixa.json (versionados)
 docs/                    conferencia-materias.md, replicacao-memoryagentbench.md, superpowers/
 ```
 
-Ainda existem só `config.py` e `livro_caixa.py`; os demais arquivos entram nas tasks seguintes do
-plano. Atualize esta seção no mesmo commit em que o layout mudar.
+Falta só `replica/analise.py` (Task 10 do plano). Atualize esta seção no mesmo commit em que o layout
+mudar.
 
 ## Comandos
 
 ```
-uv sync                 # ambiente
-uv run pytest           # GATE DE TESTES (offline, sem API)
+uv sync                                                      # ambiente
+uv run pytest                                                # GATE DE TESTES (offline, sem API)
+uv run python -c "import nltk; nltk.download('punkt_tab')"   # preparo único do fatiador do autor
+
+PYTHONUTF8=1 uv run python -m replica.snapshot               # banco do Atlas (só leitura) -> dados/     grátis
+PYTHONUTF8=1 uv run python -m replica.reclassificar          # matéria 2018-2023         GASTA ~US$ 0,10 OpenAI
+PYTHONUTF8=1 uv run python -m replica.oab                    # dados/oab/*.json a partir do snapshot     grátis
+PYTHONUTF8=1 uv run python -m replica.rodar --piloto 10 --rodada resultados/piloto-AAAAMMDD
+                                                             # GASTA ~US$ 1,50 em cada provedor
+PYTHONUTF8=1 uv run python -m replica.rodar NOMES... --rodada resultados/AAAAMMDD-ETAPA
+                                                             # GASTA: direta ~US$ 8,20; OAB ~US$ 6,50
+                                                             # na OpenAI e até ~US$ 21 na Anthropic
+PYTHONUTF8=1 uv run python -m replica.analise resultados/AAAAMMDD-ETAPA   # tabela.md (Task 10)  grátis
 ```
 
-Os comandos de rodada entram aqui quando existirem. Toda rodada real **gasta dinheiro**.
+Toda rodada real **gasta dinheiro**; o gasto acumulado fica em `resultados/livro_caixa.json`.
+
+- **Nunca rode dois rodadores ao mesmo tempo:** o livro-caixa e os `.jsonl` não têm trava de arquivo.
+- `rodar` grava uma linha por pergunta em `{rodada}/{configuração}.jsonl` logo depois de cada resposta.
+  Rodar o mesmo comando de novo retoma: pula as perguntas com linha sem erro e refaz as com erro.
+- Com nomes, roda só esses, sempre na ordem de prioridade de `CONFIGURACOES`. **Sem nomes, roda todas,
+  inclusive as da etapa direta**: numa pasta só da OAB, isso refaz a etapa direta; passe os nomes.
+- `--piloto N`: só as N primeiras perguntas do primeiro contexto de cada configuração (as sem memória
+  rodam completas, porque o portão precisa delas) e grava `projecao.md` na pasta da rodada.
+- `--usar-reserva` libera os US$ 4 guardados da OpenAI (só depois de a etapa direta reproduzir ou de
+  fechar a janela de depuração). `--haiku-h2 {1m,600k}` escolhe a variante do contexto longo do Haiku
+  na H2 quando roda sem nomes (padrão `1m`).
+- O teto de um provedor pula só as configurações seguintes daquele provedor (o embedding conta como
+  OpenAI). O portão do Haiku: `oab-h2-lc-haiku*` só roda se o `oab-sem-memoria-haiku.jsonl` **da mesma
+  pasta de rodada** acertar menos de 90% das questões de 2024 e 2025; sem esse arquivo, bloqueia.
+- O `custo_usd` das linhas não inclui os embeddings (centavos); o livro-caixa inclui.
 
 Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_URL`
 (`https://gqnejwbuloklbelsufnj.supabase.co`), `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`,
