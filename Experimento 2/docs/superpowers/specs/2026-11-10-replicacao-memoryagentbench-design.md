@@ -267,6 +267,43 @@ Travas obrigatórias:
 - Se ainda assim não reproduzir, a OAB segue, e o documento registra: "não reproduzido; não foi
   possível separar o autor da reimplementação".
 
+### Decisões do piloto (2026-11-10)
+
+O piloto (`resultados/piloto-20261110/`, 10 perguntas por configuração; as sem memória completas)
+gastou US$ 1,04 na OpenAI e US$ 1,47 na Anthropic, sem nenhum erro de API. Decisões tomadas pelo
+Claude, que executou o plano sem o Pedro na sessão; cada uma está registrada para o Pedro rever.
+
+- **Cache confirmado.** Nas seis configurações de contexto longo, as chamadas 2 a 10 vieram com 99% a
+  100% dos tokens de entrada cacheados. A chamada do contexto longo do Haiku na H2 escreveu 902.537
+  tokens no cache e coube na janela de 1M.
+- **Letra inválida: 0%** em todas as configurações da OAB. A regex de `extrair_letra` fica como está.
+- **Portão do Haiku aberto.** O Haiku sem memória acertou 69,2% das 224 questões de teste da H2
+  (precisaria de 90% para fechar). O GPT-4o-mini sem memória acertou 58,9% de todas as 3.377.
+- **Variante do Haiku na H2: 1M.** A projeção da Anthropic ficou em ~US$ 18 (~US$ 19 corrigindo o viés
+  da H1, cujo primeiro contexto é o menor), abaixo de US$ 24.
+- **Projeção da OpenAI:** primárias em ~US$ 14, dentro dos US$ 16 do plano; com as secundárias, ~US$
+  19,60, acima do teto efetivo. O que não couber sai do fim da fila (a reprodução das MCC por
+  embedding é a última).
+- **Métrica das MCC: leitura flexível como primária.** Com o prompt do próprio autor ("Only output
+  "label: {label}""), o GPT-4o-mini responde "label: 68", e o `exact_match` estrito do README conta
+  isso como erro: 0 em 10 nos dois braços do piloto, contra 6 e 8 em 10 na leitura flexível. O código
+  do autor não normaliza "label:" em lugar nenhum, então o estrito não pode ter gerado os 82,0 e 93,0
+  do artigo, e deixaria a H2 direta degenerada (0 × 0). A acurácia primária das MCC (veredito,
+  reprodução e secundárias) passa a ser `exact_match_flexivel`; o estrito aparece ao lado, como a
+  métrica literal do README. A decisão veio do formato da resposta, antes de qualquer dado da rodada
+  completa, e as duas leituras ficam gravadas em cada linha. Isto muda a Correção 3.
+- **Reclassificação de matéria:** a rodada 1 teve 4 erros em 30 e foi reprovada pela regra (até 3). O
+  prompt passou a informar o número da questão e a ordem dos blocos da prova da FGV; a rodada 2 teve 0
+  erro numa amostra nova de 30 (`docs/conferencia-materias.md` e `-rodada1.md`). As duas conferências
+  foram feitas pelo Claude e o Pedro reconfere. Restam 65 de 953 questões com matéria fora do bloco;
+  como o contexto longo e o RAG recebem a mesma lei, isso não enviesa a comparação pareada.
+- **Linha de base sem memória reaproveitada.** As 3.377 respostas de cada modelo sem memória do piloto
+  são copiadas para a pasta da rodada da OAB, em vez de pagas de novo: mesma configuração, mesmo
+  código, mesmas questões.
+- **Pendente para o Pedro:** comparar `resultados/livro_caixa.json` com os painéis da OpenAI e da
+  Anthropic (diferença de até 10% aceita). Os preços do Haiku 5.5 no código foram conferidos na
+  documentação da Anthropic.
+
 ## Correções depois da leitura do código do autor (2026-11-10)
 
 A leitura do código do autor (commit `538026089d1a8a8eff05121d0db89b388f360eba`) e dos dados dele (revisão `7ea066982b140a19337e17e60d45d4076e042faf` no Hugging Face) mudou estes pontos. Pela regra do próprio desenho ("seguir o artigo onde ele define algo"), os itens 1 a 6 não precisam de decisão nova. **O item 7 mudou o desenho; o Pedro aprovou em 2026-11-10.**
