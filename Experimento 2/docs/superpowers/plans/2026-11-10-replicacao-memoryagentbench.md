@@ -14,7 +14,7 @@ Todos os caminhos são relativos a `Experimento 2/`. Rode todos os comandos de d
 
 ## Global Constraints
 
-- Tetos de gasto: o Pedro travou nos painéis US$ 14 na OpenAI e US$ 30 na Anthropic (2026-11-10). O livro-caixa para US$ 0,50 antes de cada trava: `TETOS = {"openai": 13.5, "anthropic": 29.5}`, sem reserva. Se a trava da OpenAI subir para US$ 20, passa a `TETOS["openai"] = 19.5` com `RESERVA["openai"] = 4.0` para depurar a etapa direta.
+- Tetos de gasto: o Pedro travou nos painéis US$ 20 na OpenAI e US$ 30 na Anthropic (2026-11-10). O livro-caixa para US$ 0,50 antes de cada trava: `TETOS = {"openai": 19.5, "anthropic": 29.5}`, com `RESERVA = {"openai": 4.0, "anthropic": 0.0}`, que guarda US$ 4 da OpenAI para depurar a etapa direta.
 - Prazo: todas as rodadas com modelos da OpenAI terminam até 2026-12-20 (o GPT-4o-mini sai da API em 2027-01-14).
 - Modelos: `gpt-4o-mini`, `claude-haiku-5-5`, `text-embedding-3-small`. Sem fallback para outro modelo, sem `tool_choice` forçado.
 - Testes nunca chamam API; saída real de LLM nunca tem assert de igualdade exata.
@@ -64,9 +64,9 @@ A leitura do código do autor (commit `538026089d1a8a8eff05121d0db89b388f360eba`
 | Primárias (direta + OAB) e linhas de base | ~US$ 14,80 | ~US$ 0,25 |
 | Secundárias | ~US$ 5,90 | ~US$ 20,70 (com a H2 do Haiku em 1M; ~US$ 16,50 em 600K) |
 | **Total se tudo rodar** | ~US$ 20,70 | ~US$ 21 |
-| Teto do livro-caixa | US$ 13,50 (trava de US$ 14) | US$ 29,50 (trava de US$ 30) |
+| Teto do livro-caixa | US$ 19,50 (trava de US$ 20), US$ 4 deles de reserva | US$ 29,50 (trava de US$ 30) |
 
-**Pendente:** com a trava atual da OpenAI, nem as primárias cabem (~US$ 14,80, e mais se o cache não pegar 100%). A recomendação é subir a trava para US$ 20. Aí `TETOS["openai"] = 19.5` com reserva de US$ 4: as primárias cabem nos US$ 15,50 efetivos, e as secundárias dependem da reserva, liberada (`--usar-reserva`) depois que a etapa direta reproduzir ou fechar a janela de depuração. Se a trava ficar em US$ 14, a H2 direta volta a BANKING77 e CLINC150 (primárias ~US$ 10,60) e as secundárias da OpenAI entram até o teto. Em qualquer caso, o que não couber sai do fim da fila, e o documento registra.
+Com a trava de US$ 20, as primárias (~US$ 14,80) cabem nos US$ 15,50 efetivos. As secundárias da OpenAI dependem da reserva, liberada (`--usar-reserva`) depois que a etapa direta reproduzir ou fechar a janela de depuração. O que não couber sai do fim da fila, e o documento registra.
 
 ## Mapa de arquivos
 
@@ -106,7 +106,7 @@ docs/conferencia-materias.md, docs/replicacao-memoryagentbench.md
 - Produces, em `replica/config.py`:
   - `RAIZ: Path`, `DADOS = RAIZ / "dados"`, `RESULTADOS = RAIZ / "resultados"`, `LIVRO_CAIXA = RESULTADOS / "livro_caixa.json"`
   - `MODELO_OPENAI = "gpt-4o-mini"`, `MODELO_ANTHROPIC = "claude-haiku-5-5"`, `MODELO_EMBEDDING = "text-embedding-3-small"`
-  - `TETOS = {"openai": 13.5, "anthropic": 29.5}`, `RESERVA = {"openai": 0.0, "anthropic": 0.0}` (ver Global Constraints)
+  - `TETOS = {"openai": 19.5, "anthropic": 29.5}`, `RESERVA = {"openai": 4.0, "anthropic": 0.0}` (ver Global Constraints)
   - `PRECOS` em USD por milhão de tokens:
     - `"gpt-4o-mini": {"entrada": 0.15, "entrada_cache": 0.075, "saida": 0.60}`
     - `"text-embedding-3-small": {"entrada": 0.02}`
@@ -978,7 +978,7 @@ Expected: o commit da Task 1 aparece antes de qualquer arquivo em `resultados/`.
 
 - [ ] **Step 2: Conferir o tier das contas**
 
-O Pedro olha os limites de taxa no console da Anthropic e da OpenAI. Com um limite de tokens de entrada por minuto abaixo de ~950 mil, a chamada de escrita do contexto longo do Haiku na H2 falha sempre. Nesse caso, as configurações 20, 21 e 21' ficam fora e o documento registra.
+Já conferido pelo Pedro em 2026-11-10: a conta da Anthropic tem limite de 2 milhões de tokens de entrada por minuto, então a chamada de ~950 mil tokens do contexto longo do Haiku na H2 cabe. O tier da OpenAI só afeta o tempo: num tier baixo, as rodadas de contexto longo levam horas, e o cliente espera e tenta de novo nos 429.
 
 - [ ] **Step 3: Rodar o piloto**
 

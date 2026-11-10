@@ -13,7 +13,8 @@ GPT-4o-mini) e a conceitual (questões da OAB e corpus de leis do projeto Atlas,
 o Haiku 5.5). O código dos agentes é copiado do repositório do autor (MIT), não reescrito.
 
 Design: `docs/superpowers/specs/2026-11-10-replicacao-memoryagentbench-design.md`.
-Plano: ainda não escrito (`docs/superpowers/plans/`).
+Plano: `docs/superpowers/plans/2026-11-10-replicacao-memoryagentbench.md` (executar com
+`superpowers:subagent-driven-development`).
 
 ## Arquitetura
 
@@ -62,8 +63,15 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
 
 ## Armadilhas conhecidas
 
-- **Tetos de gasto: US$ 20 na OpenAI, US$ 30 na Anthropic.** O livro-caixa no código recusa a chamada
-  que passaria do teto. Rodar o piloto antes de qualquer rodada completa.
+- **Tetos de gasto:** o Pedro travou nos painéis US$ 20 na OpenAI e US$ 30 na Anthropic. O
+  livro-caixa no código para US$ 0,50 antes de cada trava e guarda US$ 4 da OpenAI para depurar a
+  etapa direta. Rodar o piloto antes de qualquer rodada completa.
+- **Rodadas reais pré-autorizadas** pelo Pedro (2026-11-10): não pedir OK a cada rodada, desde que
+  dentro dos tetos e na ordem do plano.
+- **Nunca `git add -A`:** `../Experimento 1/RESIDENCIA/` e `../Experimento 1/artigos/` (PDFs) estão
+  fora do git de propósito, e `-A` pega a árvore inteira, mesmo rodado daqui. Commite por caminho.
+- **Limite da Anthropic:** 2 milhões de tokens de entrada por minuto (conferido em 2026-11-10); o
+  contexto longo do Haiku (~950 mil tokens) cabe.
 - **Os modelos da OpenAI saem do ar:** GPT-4o-mini, GPT-4o e GPT-4.1-mini em 2027-01-14; GPT-5-mini
   em 2026-12-11. Todas as rodadas com OpenAI terminam até 2026-12-20. Claude 3.7 Sonnet e Gemini 2.0
   Flash, usados no artigo, já não existem.
