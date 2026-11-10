@@ -1,0 +1,14 @@
+{
+ "projeto": "gqnejwbuloklbelsufnj",
+ "data": "2026-11-10T06:30:44.537524+00:00",
+ "tabelas": {
+  "questoes_oab": {
+   "linhas": 3395,
+   "sha256": "d6b9f2e19df7f0d15aa29dcba93b3106fefa062abe1074f2cbb73d841989da6f"
+  },
+  "law_articles": {
+   "linhas": 11954,
+   "sha256": "4498f623ee1faf40a60c41c2b623a62cb21a95fc36d505176bffeaec4f5f28f5"
+  }
+ }
+}

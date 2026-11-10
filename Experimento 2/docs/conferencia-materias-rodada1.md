@@ -1,0 +1,38 @@
+# Conferência da reclassificação de matéria: rodada 1 (reprovada)
+
+Conferência **provisória** feita pelo Claude (controlador da execução do plano) em 2026-11-10, porque a sessão rodou sem o Pedro; o Pedro reconfere. Resultado: **4 erros em 30**, acima do limite de 3, então a rodada 1 foi reprovada e o prompt de classificação foi ajustado (ver `docs/conferencia-materias.md`, rodada 2).
+
+Os quatro erros seguem dois padrões: o modelo puxa para o ECA questões de Direito Civil que só têm um menor ou uma pessoa com deficiência na história, e tira de Direito Administrativo questões sobre servidor público e Lei Anticorrupção. Em todas as 30 linhas, a matéria certa coincide com o bloco da prova da FGV pelo número da questão.
+
+| id | trecho (150 caracteres) | rótulo do banco | rótulo novo | ok? |
+|---|---|---|---|---|
+| 2021-02-8 | Luiz Felipe, advogado, mantém um canal semanal em portal na internet destinado ao público jurídico. Para que a conduta de Luiz Felipe esteja de acordo | Ética Profissional | Ética Profissional | sim |
+| 2018-03-50 | A Fazenda Pública do Estado de Pernambuco ajuizou ação de execução fiscal em face de sociedade empresária. No curso da demanda, houve o processamento  | Direito Empresarial | Direito Empresarial | sim |
+| 2018-02-35 | A cidade de Asa Branca foi atingida por uma tempestade de grandes proporções. As ruas ficaram alagadas e a população sofreu com a inundação de suas ca | Direito do Trabalho | Direito Civil | sim |
+| 2022-02-33 | Após requerimento processual de licenciamento ambiental, o Estado Alfa, por meio de seu órgão ambiental competente, deferiu licença de operação para a | Direito Penal | Direito Ambiental | sim |
+| 2019-01-60 | Fabrício cumpria pena em livramento condicional, em razão de condenação pela prática de crime de lesão corporal grave. Em 10 de janeiro de 2018, quand | Direito Penal | Direito Penal | sim |
+| 2019-01-31 | Os analistas de infraestrutura de determinado Ministério, ocupantes de cargo efetivo, pleiteiam há algum tempo uma completa reestruturação da carreira | Direito Penal | Direito do Trabalho | não (é Direito Administrativo: greve de servidor público; questão 31, bloco 27–32) |
+| 2019-01-10 | Uma das mais importantes questões para a Filosofia do Direito diz respeito ao procedimento que define uma norma jurídica como sendo válida. Para o jus | Filosofia do Direito | Filosofia do Direito | sim |
+| 2018-03-77 | A sociedade empresária Alfa S. A. está sendo executada na Justiça do Trabalho e, em 13/03/2018, recebeu citação para pagamento da dívida que possuía e | Direito do Trabalho | Direito Processual do Trabalho | sim |
+| 2022-02-3 | Em certa comarca, em razão da insuficiência do número de defensores públicos em atuação, o Juiz Caio nomeou o advogado Pedro para defender um réu juri | Direito Penal | Ética Profissional | sim |
+| 2018-03-41 | Fernando, 15 anos, mora com seus pais Ana e Aluísio, grandes empresários, titulares de vultoso patrimônio, e utiliza com frequência as redes sociais.  | Direito Civil | Direito da Criança e do Adolescente | não (é Direito Civil: responsabilidade civil dos pais por ato do filho menor; questão 41, bloco 35–41) |
+| 2022-01-41 | Júlia, 22 anos, com espectro autista, tem, em razão de sua deficiência, impedimento de longo prazo de natureza mental que pode, em algumas atividades  | Direito Empresarial | Direito da Criança e do Adolescente | não (é Direito Civil: capacidade civil da pessoa com deficiência; questão 41, bloco 35–41) |
+| 2022-02-32 | Em janeiro de 2022, João, na qualidade de Secretário de Educação do município Alfa, de forma culposa, praticou ato que causou lesão ao erário municipa | Direito Administrativo | Direito Administrativo | sim |
+| 2023-01-4 | A advogada Celina celebrou com a cliente Camila um contrato de prestação de serviços advocatícios. Na cláusula X, foi disposto que a extensão do patro | Direito Civil | Ética Profissional | sim |
+| 2021-01-58 | João, em 17/06/2015, foi condenado pela prática de crime militar próprio. Após cumprir a pena respectiva, João, em 30/02/2018, veio a praticar um crim | Direito Processual Civil | Direito Penal | sim |
+| 2018-03-28 | Com a finalidade de contratar obras públicas relacionadas à melhoria da mobilidade urbana, o Estado X optou pela adoção do Regime Diferenciado de Cont | Direito Empresarial | Direito Administrativo | sim |
+| 2021-02-31 | A sociedade empresária Esperthina praticou atos de corrupção contra determinada organização pública internacional, mediante oferecimento de suborno pa | Direito Administrativo | Direito Empresarial | não (é Direito Administrativo: Lei Anticorrupção, processo na CGU; questão 31, bloco 27–32) |
+| 2019-03-62 | Durante ato penal em que Guilherme figura como denunciado pela prática de crime de abandono de incapaz (Pena: detenção, de 6 meses a 3 anos), foi inst | Direito Processual Civil | Direito Penal | sim |
+| 2018-02-42 | Em cumprimento de mandado de busca e apreensão do Juízo Criminal, policiais encontraram fotografias de adolescentes vestidas, em posições sexuais, com | Direito Penal | Direito da Criança e do Adolescente | sim |
+| 2018-02-40 | Jorge, engenheiro e construtor, firma, em seu escritório, contrato de empreitada com Maria, dona da obra. Na avença, é acordado que Jorge fornecerá os | Direito Civil | Direito Civil | sim |
+| 2018-03-33 | A União edita o Decreto nº 123, que fixa as regras pelas quais serão outorgados direitos de uso dos recursos hídricos existentes em seu território, ga | Direito Processual Civil | Direito Ambiental | sim |
+| 2018-25_79 | Em reclamação trabalhista já na fase de execução, o juiz determinou que o autor apresentasse os cálculos de liquidação, determinação esta que foi cump | Direito Processual do Trabalho | Direito Processual do Trabalho | sim |
+| 2019-01-2 | A advogada Leia Santos confeccionou cartões de visita para sua apresentação e de seu escritório. Nos cartões, constava seu nome, número de inscrição n | Ética Profissional | Ética Profissional | sim |
+| 2021-01-20 | Pedro, cidadão de nacionalidade argentina e nesse país residente, ajuizou ação em face de sociedade empresária de origem canadense, ao qual, ao final  | Direito Processual Civil | Direito Internacional | sim |
+| 2021-02-42 | Paulo recebeu vídeos pornográficos em seu celular, enviados por um amigo para um grupo de mensagens do qual faz parte. Em um dos vídeos, Paulo percebe | Direito Penal | Direito da Criança e do Adolescente | sim |
+| 2018-02-37 | Ronaldo é proprietário de um terreno que se encontrava cercado de imóveis edificados e decide vender metade dele para Abílio. Dois anos após o negócio | Direito Civil | Direito Civil | sim |
+| 2021-01-72 | Desde abril de 2019, Denilson é empregado em uma indústria de cosméticos, com carteira profissional assinada. No último contracheque de Denilson verif | Direito do Trabalho | Direito do Trabalho | sim |
+| 2018-25_60 | Em 2014, Túlio foi condenado definitivamente pela prática de um crime de estupro ao cumprimento de pena de 6 anos. Após preencher todos os requisitos  | Direito Penal | Direito Penal | sim |
+| 2022-02-10 | É possível que, diante de um caso concreto, seja aceitável a aplicação tanto de uma lei geral quanto de uma lei especial. Isso, segundo Norberto Bobbi | Filosofia do Direito | Filosofia do Direito | sim |
+| 2022-01-16 | Clarisse, em razão da deficiência severa, não possui qualquer meio de prover sua própria manutenção. Como sua deficiência foi adquirida ainda na infân | Direito Constitucional | Direito Previdenciário | sim |
+| 2022-01-65 | Matheus está sendo investigado por suposta prática de crime de uso de documento público falso. Após representação da autoridade policial, o juiz defer | Direito Penal | Direito Processual Penal | sim |
