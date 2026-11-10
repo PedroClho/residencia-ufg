@@ -12,6 +12,7 @@ import math
 import os
 import sys
 import tempfile
+import traceback
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -38,6 +39,9 @@ LIMIAR_PORTAO = 0.90
 LINHA_DE_BASE_HAIKU = "oab-sem-memoria-haiku.jsonl"
 VARIANTES_HAIKU_H2 = {"1m": "oab-h2-lc-haiku", "600k": "oab-h2-lc-haiku-600k"}
 CTX_MAX_OAB = 2_000_000
+# Respostas pagas que contam como erro de resposta e não são refeitas na retomada. Os outros erros
+# (`[erro: api]` e exceções) são refeitos.
+ERROS_FINAIS = ("[erro: recusa]", "[erro: resposta vazia]")
 
 
 @dataclass(frozen=True)
@@ -174,7 +178,8 @@ def _ler_linhas(caminho: Path) -> tuple[list[dict], bool]:
     """Lê o JSONL; devolve `(linhas, cortada)`.
 
     Uma última linha cortada (queda no meio da escrita) é ignorada com aviso. A leitura é em bytes porque
-    o corte pode cair no meio de um caractere UTF-8. Linha ilegível no meio do arquivo levanta erro.
+    o corte pode cair no meio de um caractere UTF-8. Linha ilegível no meio do arquivo levanta `ValueError`
+    com o caminho do arquivo.
     """
     if not caminho.exists():
         return [], False
@@ -183,33 +188,42 @@ def _ler_linhas(caminho: Path) -> tuple[list[dict], bool]:
     for i, bruta in enumerate(brutas):
         try:
             linhas.append(json.loads(bruta.decode("utf-8")))
-        except (UnicodeDecodeError, json.JSONDecodeError):
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
             if i < len(brutas) - 1:
-                raise
+                raise ValueError(f"{caminho}: linha {i + 1} ilegível no meio do arquivo (não é queda na "
+                                 f"escrita); conserte à mão antes de retomar") from e
             print(f"[aviso] {caminho.name}: última linha cortada (queda no meio da escrita), ignorada",
                   file=sys.stderr)
             return linhas, True
     return linhas, False
 
 
+def _refazer(linha: dict) -> bool:
+    """A linha é refeita na retomada? Só erro de API ou exceção; recusa e resposta vazia são respostas finais."""
+    erro = linha.get("erro")
+    return bool(erro) and erro not in ERROS_FINAIS
+
+
 def _uma_por_pergunta(linhas: list[dict]) -> dict[str, dict]:
-    """`pergunta_id` → linha. Uma linha sem erro nunca é trocada por uma com erro; no resto, vale a mais nova,
-    na posição da primeira."""
+    """`pergunta_id` → linha. Uma resposta final (sem erro, recusa ou vazia) nunca é trocada por uma linha a
+    refazer; no resto, vale a mais nova, na posição da primeira."""
     por_id: dict[str, dict] = {}
     for linha in linhas:
         atual = por_id.get(linha["pergunta_id"])
-        if atual is None or not linha.get("erro") or atual.get("erro"):
+        if atual is None or not _refazer(linha) or _refazer(atual):
             por_id[linha["pergunta_id"]] = linha
     return por_id
 
 
 def _regravar(caminho: Path, linhas: list[dict]) -> None:
-    """Troca o arquivo de uma vez (temporário + `os.replace`): uma queda no meio não perde nenhuma linha."""
+    """Troca o arquivo de uma vez (temporário com fsync + `os.replace`): uma queda no meio não perde linha."""
     fd, tmp = tempfile.mkstemp(dir=caminho.parent, suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             for linha in linhas:
                 f.write(json.dumps(linha, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, caminho)
     except BaseException:
         if os.path.exists(tmp):
@@ -226,10 +240,16 @@ def _arrumar(caminho: Path) -> dict[str, dict]:
     return por_id
 
 
-def _situacao(por_id: dict[str, dict]) -> tuple[int, int]:
-    """(perguntas com linha sem erro, perguntas com linha de erro)."""
-    erros = sum(1 for linha in por_id.values() if linha.get("erro"))
-    return len(por_id) - erros, erros
+def _situacao(por_id: dict[str, dict]) -> tuple[int, int, int]:
+    """(perguntas sem erro, perguntas com erro de API a refazer, perguntas com recusa ou resposta vazia)."""
+    erros = sum(1 for linha in por_id.values() if _refazer(linha))
+    recusas = sum(1 for linha in por_id.values() if linha.get("erro") in ERROS_FINAIS)
+    return len(por_id) - erros - recusas, erros, recusas
+
+
+def _situacao_do_arquivo(caminho: Path) -> tuple[int, int, int]:
+    """`_situacao` do JSONL, só lendo (sem regravar)."""
+    return _situacao(_uma_por_pergunta(_ler_linhas(caminho)[0]))
 
 
 # --- Execução de uma configuração ---
@@ -280,10 +300,18 @@ def _perguntar(cfg: Configuracao, contexto: Contexto, pergunta: Pergunta, client
 
 
 def _linha(cfg: Configuracao, contexto: Contexto, pergunta: Pergunta, consulta: str, saida: dict) -> dict:
-    """Linha do JSONL. Linha com erro tem `acerto` falso e `metricas` vazias (não é avaliada)."""
+    """Linha do JSONL. Linha com erro tem `acerto` falso e `metricas` vazias (não é avaliada). Se a avaliação
+    quebrar, a resposta paga é gravada mesmo assim, com `acerto` falso e `metricas={"erro_avaliacao": ...}`."""
     erro = saida.get("erro")
     texto = saida.get("output") or ""
-    acerto, metricas = (False, {}) if erro else avaliar(contexto.fonte, texto, pergunta.gabarito)
+    acerto, metricas = False, {}
+    if not erro:
+        try:
+            acerto, metricas = avaliar(contexto.fonte, texto, pergunta.gabarito)
+        except Exception as e:
+            print(f"[erro] {cfg.nome}, pergunta {pergunta.id}: avaliação quebrou ({e!r}); resposta gravada",
+                  file=sys.stderr)
+            acerto, metricas = False, {"erro_avaliacao": repr(e)}
     return {
         "configuracao": cfg.nome, "fonte": contexto.fonte, "contexto_id": contexto.id,
         "pergunta_id": pergunta.id, "ano": pergunta.ano, "consulta": consulta, "gabarito": pergunta.gabarito,
@@ -299,21 +327,22 @@ def rodar_configuracao(cfg: Configuracao, contextos: list[Contexto], fabricar, e
     """Roda uma configuração e grava uma linha por pergunta em `pasta/{nome}.jsonl`.
 
     - `fabricar(modelo, temperatura)` devolve o cliente de LLM; `embeddings` só é usado no RAG de embedding.
-    - Por contexto: se todas as perguntas já têm linha sem erro, o contexto é pulado inteiro. Senão, um
+    - Por contexto: se todas as perguntas já têm resposta final, o contexto é pulado inteiro. Senão, um
       `AgentWrapper` novo memoriza todos os chunks e responde as perguntas pendentes em sequência (o cache
       precisa das chamadas seguidas). A linha é anexada logo depois de cada resposta.
-    - Linhas com erro são refeitas; ao fim, o arquivo fica com uma linha por pergunta.
+    - Linhas com erro de API (ou exceção) são refeitas; recusa e resposta vazia são respostas finais, contam
+      como erro de resposta e não são refeitas. Ao fim, o arquivo fica com uma linha por pergunta.
     - `limite_perguntas`: só as N primeiras perguntas do primeiro contexto (piloto).
     - `LimiteDeGasto` encerra com `status="parada: teto"` e `provedor_teto` com o provedor que estourou.
 
-    Devolve `{"nome", "feitas", "erros", "custo_usd", "status", "provedor_teto"}`: `feitas` e `erros` contam as
-    perguntas do arquivo ao fim; `custo_usd` soma só as chamadas desta execução (sem os embeddings, que ficam
-    só no livro-caixa).
+    Devolve `{"nome", "feitas", "erros", "recusas", "custo_usd", "status", "provedor_teto"}`, com as perguntas do
+    arquivo ao fim: `feitas` sem erro, `erros` de API (a refazer), `recusas` com recusa ou resposta vazia.
+    `custo_usd` soma só as chamadas desta execução (sem os embeddings, que ficam só no livro-caixa).
     """
     pasta = Path(pasta)
     pasta.mkdir(parents=True, exist_ok=True)
     caminho = pasta / f"{cfg.nome}.jsonl"
-    feitas = {pid for pid, linha in _arrumar(caminho).items() if not linha.get("erro")}
+    feitas = {pid for pid, linha in _arrumar(caminho).items() if not _refazer(linha)}
     if limite_perguntas is not None:
         contextos = [Contexto(c.id, c.fonte, c.texto, c.perguntas[:limite_perguntas]) for c in contextos[:1]]
     cliente = fabricar(cfg.modelo, cfg.temperatura)
@@ -339,29 +368,50 @@ def rodar_configuracao(cfg: Configuracao, contextos: list[Contexto], fabricar, e
         provedor_teto = getattr(e, "provedor", PROVEDOR[cfg.modelo])
         print(f"{cfg.nome}: parada pelo teto de gasto ({e})", file=sys.stderr)
     finally:
-        por_id = _arrumar(caminho)
-    n_feitas, n_erros = _situacao(por_id)
+        # Uma falha aqui (ex.: PermissionError no os.replace) não pode esconder a exceção original nem perder
+        # linhas: o arquivo fica como está, com as linhas anexadas, e a próxima execução compacta.
+        try:
+            _arrumar(caminho)
+        except Exception as e:
+            print(f"[aviso] {caminho.name}: não consegui compactar ({e!r}); a próxima execução compacta",
+                  file=sys.stderr)
+    n_feitas, n_erros, n_recusas = _situacao_do_arquivo(caminho)
     if status is None:
-        status = "com erros" if n_erros else "completa"
-    return {"nome": cfg.nome, "feitas": n_feitas, "erros": n_erros, "custo_usd": custo, "status": status,
-            "provedor_teto": provedor_teto}
+        status = "com erros de API" if n_erros else "completa"
+    return {"nome": cfg.nome, "feitas": n_feitas, "erros": n_erros, "recusas": n_recusas, "custo_usd": custo,
+            "status": status, "provedor_teto": provedor_teto}
 
 
 # --- Portão, projeção e lista de configurações ---
 
-def portao_haiku_h2(pasta: Path) -> tuple[bool, float]:
-    """`(libera, acurácia)` do `oab-sem-memoria-haiku` nas perguntas de 2024 e 2025, as de teste da H2.
+def portao_haiku_h2(pasta: Path, esperadas: set[str] | None = None) -> tuple[bool, float]:
+    """`(libera, acurácia)` do `oab-sem-memoria-haiku` nas questões de teste da H2 (as de 2024 e 2025).
 
-    Libera se a acurácia for menor que 0,90. Com 90% ou mais, o Haiku provavelmente já viu as questões, sobra
-    pouco espaço para a memória ajudar, e o contexto longo do Haiku na H2 não roda. Linhas com erro não contam.
-    Sem nenhuma linha de 2024-2025 (arquivo ausente ou incompleto), devolve `(False, nan)`: bloqueia.
+    - `esperadas`: ids das questões de teste da H2; por padrão, as de `dados/oab/h2.json`, que são as mesmas
+      224 questões de 2024-2025 do conjunto sem memória.
+    - Bloqueia, com `(False, nan)`, se alguma questão esperada não tem resposta final na linha de base (falta a
+      linha, ou ela tem erro de API): uma linha de base parcial não decide nada. Recusa e resposta vazia são
+      respostas finais e contam como erro.
+    - Com tudo respondido, libera se a acurácia for menor que 0,90. Com 90% ou mais, o Haiku provavelmente já
+      viu as questões, sobra pouco espaço para a memória ajudar, e o contexto longo do Haiku na H2 não roda.
+
+    Imprime o motivo da decisão.
     """
-    linhas, _ = _ler_linhas(Path(pasta) / LINHA_DE_BASE_HAIKU)
-    teste = [l for l in _uma_por_pergunta(linhas).values() if l.get("ano") in (2024, 2025) and not l.get("erro")]
-    if not teste:
+    if esperadas is None:
+        esperadas = {p.id for c in carregar_oab("h2") for p in c.perguntas}
+    arquivo = Path(pasta) / LINHA_DE_BASE_HAIKU
+    por_id = _uma_por_pergunta(_ler_linhas(arquivo)[0])
+    respondidas = [por_id[i] for i in esperadas if i in por_id and not _refazer(por_id[i])]
+    faltam = len(esperadas) - len(respondidas)
+    if not esperadas or faltam:
+        print(f"portão do Haiku fechado: faltam {faltam} de {len(esperadas)} questões de teste da H2 com resposta "
+              f"em {arquivo} (rode a oab-sem-memoria-haiku nessa pasta até erros_api=0)", flush=True)
         return False, math.nan
-    acuracia = sum(1 for l in teste if l["acerto"]) / len(teste)
-    return acuracia < LIMIAR_PORTAO, acuracia
+    acuracia = sum(1 for l in respondidas if l["acerto"]) / len(respondidas)
+    libera = acuracia < LIMIAR_PORTAO
+    print(f"portão do Haiku {'aberto' if libera else 'fechado'}: o Haiku sem memória acertou {acuracia:.1%} das "
+          f"{len(respondidas)} questões de teste da H2 (o portão exige menos de {LIMIAR_PORTAO:.0%})", flush=True)
+    return libera, acuracia
 
 
 def projecao(linhas: list[dict], n_contextos: int, n_perguntas: int) -> float:
@@ -374,39 +424,33 @@ def projecao(linhas: list[dict], n_contextos: int, n_perguntas: int) -> float:
     return primeira * n_contextos + sum(demais) / len(demais) * (n_perguntas - n_contextos)
 
 
-def selecionar(nomes: list[str], haiku_h2: str = "1m") -> list[Configuracao]:
-    """Configurações a rodar, na ordem de prioridade. Sem nomes: todas, com só a variante `haiku_h2` do
-    contexto longo do Haiku na H2. Nome desconhecido levanta `ValueError`."""
+def selecionar(nomes: list[str], haiku_h2: str | None = None) -> list[Configuracao]:
+    """Configurações a rodar, na ordem de prioridade. Levanta `ValueError` em nome desconhecido.
+
+    - Sem nomes: todas, com só a variante `haiku_h2` (padrão `1m`) do contexto longo do Haiku na H2.
+    - Com nomes e sem `haiku_h2`: exatamente os nomeados.
+    - Com nomes e com `haiku_h2`: os nomes têm de incluir essa variante e nenhuma outra; o contrário levanta
+      `ValueError`, para nunca rodar uma variante diferente da pedida (nem ignorar a opção calado).
+    """
     if not nomes:
-        fora = {v for k, v in VARIANTES_HAIKU_H2.items() if k != haiku_h2}
+        fora = {v for k, v in VARIANTES_HAIKU_H2.items() if k != (haiku_h2 or "1m")}
         return [c for c in CONFIGURACOES if c.nome not in fora]
     desconhecidos = sorted(set(nomes) - {c.nome for c in CONFIGURACOES})
     if desconhecidos:
         raise ValueError(f"configuração desconhecida: {', '.join(desconhecidos)}")
+    if haiku_h2 is not None:
+        escolhida = VARIANTES_HAIKU_H2[haiku_h2]
+        outras = sorted(set(nomes) & (set(VARIANTES_HAIKU_H2.values()) - {escolhida}))
+        if outras:
+            raise ValueError(f"--haiku-h2 {haiku_h2} conflita com {', '.join(outras)} nos nomes")
+        if escolhida not in nomes:
+            raise ValueError(f"--haiku-h2 {haiku_h2} sem {escolhida} nos nomes não teria efeito")
     return [c for c in CONFIGURACOES if c.nome in nomes]
 
 
-def _bloqueio(cfg: Configuracao, parados: set[str], pasta: Path) -> str | None:
-    """Motivo para pular a configuração (teto de um provedor que ela usa, ou portão do Haiku), ou `None`."""
-    tetos = sorted(provedores(cfg) & parados)
-    if tetos:
-        return f"pulada: teto ({', '.join(tetos)})"
-    if cfg.nome.startswith(VARIANTES_HAIKU_H2["1m"]):
-        libera, acuracia = portao_haiku_h2(pasta)
-        if not libera:
-            if math.isnan(acuracia):
-                motivo = f"sem linhas de 2024-2025 em {Path(pasta) / LINHA_DE_BASE_HAIKU}"
-            else:
-                motivo = (f"o Haiku sem memória acertou {acuracia:.1%} das questões de 2024-2025 "
-                          f"(o portão exige menos de {LIMIAR_PORTAO:.0%})")
-            print(f"{cfg.nome}: portão do Haiku fechado: {motivo}", flush=True)
-            return "pulada: portão"
-    return None
-
-
 def _resumo(r: dict) -> str:
-    return (f"{r['nome']}: feitas={r['feitas']}, erros={r['erros']}, custo=US$ {r['custo_usd']:.4f}, "
-            f"status={r['status']}")
+    return (f"{r['nome']}: feitas={r['feitas']}, erros_api={r['erros']}, recusas_vazias={r['recusas']}, "
+            f"custo=US$ {r['custo_usd']:.4f}, status={r['status']}")
 
 
 def gravar_projecao(pasta: Path, cfgs: list[Configuracao], resultados: list[dict],
@@ -417,8 +461,11 @@ def gravar_projecao(pasta: Path, cfgs: list[Configuracao], resultados: list[dict
         "",
         f"Piloto com {piloto} pergunta(s) por configuração, as primeiras do primeiro contexto. As configurações "
         "sem memória rodam completas, e nelas o valor é o custo real. A projeção é `custo da 1ª linha × "
-        "contextos + média das demais × (perguntas − contextos)`, com as linhas sem erro do provedor do "
-        "leitor; os embeddings (centavos) ficam só no livro-caixa.",
+        "contextos + média das demais × (perguntas − contextos)`, com as respostas finais (sem erro de API) do "
+        "provedor do leitor; os embeddings (centavos) ficam só no livro-caixa.",
+        "",
+        "**A projeção supõe todos os contextos do tamanho do primeiro.** Na H1 da OAB o primeiro contexto (Ética) "
+        "é menor que os do CPC, do CC e da CF, então as projeções do contexto longo na H1 saem baixas.",
         "",
         "| configuração | provedor | linhas | contextos | perguntas | custo do piloto (US$) | projeção completa (US$) | status |",
         "|---|---|---|---|---|---|---|---|",
@@ -426,15 +473,19 @@ def gravar_projecao(pasta: Path, cfgs: list[Configuracao], resultados: list[dict
     totais = {"openai": 0.0, "anthropic": 0.0}
     for cfg, r in zip(cfgs, resultados):
         provedor = PROVEDOR[cfg.modelo]
-        todas = list(_arrumar(Path(pasta) / f"{cfg.nome}.jsonl").values())
-        sem_erro = [l for l in todas if not l.get("erro")]
+        try:
+            todas = list(_uma_por_pergunta(_ler_linhas(Path(pasta) / f"{cfg.nome}.jsonl")[0]).values())
+        except ValueError as e:
+            md.append(f"| {cfg.nome} | {provedor} | ? | – | – | – | – | arquivo ilegível: {e} |")
+            continue
+        finais = [l for l in todas if not _refazer(l)]
         contextos = conjuntos.get(cfg.conjunto)
-        if not sem_erro or contextos is None:
+        if not finais or contextos is None:
             md.append(f"| {cfg.nome} | {provedor} | {len(todas)} | – | – | – | – | {r['status']} |")
             continue
         n_contextos, n_perguntas = len(contextos), sum(len(c.perguntas) for c in contextos)
         custo_piloto = sum(l["custo_usd"] for l in todas)
-        valor = custo_piloto if cfg.agente == SEM else projecao(sem_erro, n_contextos, n_perguntas)
+        valor = custo_piloto if cfg.agente == SEM else projecao(finais, n_contextos, n_perguntas)
         totais[provedor] += valor
         md.append(f"| {cfg.nome} | {provedor} | {len(todas)} | {n_contextos} | {n_perguntas} | "
                   f"{custo_piloto:.4f} | {valor:.4f} | {r['status']} |")
@@ -445,13 +496,44 @@ def gravar_projecao(pasta: Path, cfgs: list[Configuracao], resultados: list[dict
     return caminho
 
 
+def _resultado_sem_rodar(cfg: Configuracao, pasta: Path, status: str) -> dict:
+    """Resultado de uma configuração pulada ou que falhou, com a contagem do arquivo quando dá para ler."""
+    try:
+        feitas, erros, recusas = _situacao_do_arquivo(pasta / f"{cfg.nome}.jsonl")
+    except Exception:
+        feitas, erros, recusas = 0, 0, 0
+    return {"nome": cfg.nome, "feitas": feitas, "erros": erros, "recusas": recusas, "custo_usd": 0.0,
+            "status": status, "provedor_teto": None}
+
+
+def _rodar_uma(cfg: Configuracao, pasta: Path, parados: set[str], conjuntos: dict[str, list[Contexto]],
+               carregar, fabricar, embeddings, piloto: int | None) -> dict:
+    tetos = sorted(provedores(cfg) & parados)
+    if tetos:
+        return _resultado_sem_rodar(cfg, pasta, f"pulada: teto ({', '.join(tetos)})")
+    if cfg.conjunto not in conjuntos:
+        conjuntos[cfg.conjunto] = carregar(cfg)
+    contextos = conjuntos[cfg.conjunto]
+    if cfg.nome.startswith(VARIANTES_HAIKU_H2["1m"]):
+        libera, _ = portao_haiku_h2(pasta, {p.id for c in contextos for p in c.perguntas})
+        if not libera:
+            return _resultado_sem_rodar(cfg, pasta, "pulada: portão")
+    limite = None if piloto is None or cfg.agente == SEM else piloto
+    r = rodar_configuracao(cfg, contextos, fabricar, embeddings, pasta, limite)
+    if r["provedor_teto"]:
+        parados.add(r["provedor_teto"])
+    return r
+
+
 def executar(cfgs: list[Configuracao], pasta: Path, carregar, fabricar, embeddings,
              piloto: int | None = None) -> list[dict]:
     """Roda as configurações na ordem dada e imprime uma linha de resumo por configuração.
 
     - O teto de um provedor pula só as configurações seguintes que usam aquele provedor.
-    - O portão do Haiku é conferido logo antes de cada `oab-h2-lc-haiku*`.
+    - O portão do Haiku é conferido logo antes de cada `oab-h2-lc-haiku*`, contra as questões dela.
     - `carregar(cfg)` é chamado uma vez por conjunto, e só para configurações que vão rodar.
+    - Uma exceção inesperada numa configuração (dados ausentes, arquivo corrompido, bug) vira
+      `status="falhou: ..."`, com o traceback no stderr, e a rodada segue para a próxima.
     - Com `piloto`, cada configuração faz só as N primeiras perguntas do primeiro contexto (as sem memória
       rodam completas, porque o portão precisa delas) e no fim grava `projecao.md`.
     """
@@ -461,18 +543,11 @@ def executar(cfgs: list[Configuracao], pasta: Path, carregar, fabricar, embeddin
     conjuntos: dict[str, list[Contexto]] = {}
     resultados = []
     for cfg in cfgs:
-        motivo = _bloqueio(cfg, parados, pasta)
-        if motivo:
-            feitas, erros = _situacao(_arrumar(pasta / f"{cfg.nome}.jsonl"))
-            r = {"nome": cfg.nome, "feitas": feitas, "erros": erros, "custo_usd": 0.0, "status": motivo,
-                 "provedor_teto": None}
-        else:
-            if cfg.conjunto not in conjuntos:
-                conjuntos[cfg.conjunto] = carregar(cfg)
-            limite = None if piloto is None or cfg.agente == SEM else piloto
-            r = rodar_configuracao(cfg, conjuntos[cfg.conjunto], fabricar, embeddings, pasta, limite)
-            if r["provedor_teto"]:
-                parados.add(r["provedor_teto"])
+        try:
+            r = _rodar_uma(cfg, pasta, parados, conjuntos, carregar, fabricar, embeddings, piloto)
+        except Exception as e:
+            traceback.print_exc()
+            r = _resultado_sem_rodar(cfg, pasta, f"falhou: {type(e).__name__}: {e}")
         print(_resumo(r), flush=True)
         resultados.append(r)
     if piloto is not None:
@@ -488,15 +563,16 @@ def main(argv=None) -> int:
     )
     parser.add_argument("nomes", nargs="*", metavar="NOMES",
                         help="configurações a rodar, sempre na ordem de prioridade (padrão: todas, com só a "
-                             "variante do Haiku H2 escolhida em --haiku-h2)")
+                             "variante do Haiku H2 de --haiku-h2)")
     parser.add_argument("--rodada", type=Path, default=RESULTADOS / "rodada", metavar="DIR",
                         help="pasta da rodada, com um .jsonl por configuração (padrão: resultados/rodada)")
     parser.add_argument("--piloto", type=int, metavar="N",
                         help="só as N primeiras perguntas do primeiro contexto de cada configuração (as sem "
                              "memória rodam completas) e grava projecao.md")
     parser.add_argument("--usar-reserva", action="store_true", help="libera a reserva de US$ 4 da OpenAI")
-    parser.add_argument("--haiku-h2", choices=sorted(VARIANTES_HAIKU_H2), default="1m",
-                        help="variante do contexto longo do Haiku na H2 quando roda sem nomes (padrão: 1m)")
+    parser.add_argument("--haiku-h2", choices=sorted(VARIANTES_HAIKU_H2), default=None,
+                        help="variante do contexto longo do Haiku na H2. Sem nomes, escolhe qual entra "
+                             "(padrão: 1m); com nomes, a variante tem de estar nos nomes, e a outra não")
     args = parser.parse_args(argv)
     if args.piloto is not None and args.piloto < 1:
         parser.error("--piloto precisa ser 1 ou mais")
@@ -516,8 +592,9 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         print("interrompido: rode o mesmo comando para retomar de onde parou", file=sys.stderr)
         codigo = 130
-    print(f"gasto no livro-caixa: OpenAI US$ {livro.gasto('openai'):.4f}, "
-          f"Anthropic US$ {livro.gasto('anthropic'):.4f}", flush=True)
+    finally:
+        print(f"gasto no livro-caixa: OpenAI US$ {livro.gasto('openai'):.4f}, "
+              f"Anthropic US$ {livro.gasto('anthropic'):.4f}", flush=True)
     return codigo
 
 

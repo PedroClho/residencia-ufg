@@ -59,17 +59,27 @@ Toda rodada real **gasta dinheiro**; o gasto acumulado fica em `resultados/livro
 
 - **Nunca rode dois rodadores ao mesmo tempo:** o livro-caixa e os `.jsonl` não têm trava de arquivo.
 - `rodar` grava uma linha por pergunta em `{rodada}/{configuração}.jsonl` logo depois de cada resposta.
-  Rodar o mesmo comando de novo retoma: pula as perguntas com linha sem erro e refaz as com erro.
+  Rodar o mesmo comando de novo retoma: só as linhas com erro de API (`[erro: api]` ou exceção) são
+  refeitas. `[erro: recusa]` e `[erro: resposta vazia]` são respostas finais: já foram pagas, contam como
+  erro de resposta e não são refeitas. O resumo separa `erros_api` de `recusas_vazias`; rode de novo até
+  `erros_api=0`.
 - Com nomes, roda só esses, sempre na ordem de prioridade de `CONFIGURACOES`. **Sem nomes, roda todas,
   inclusive as da etapa direta**: numa pasta só da OAB, isso refaz a etapa direta; passe os nomes.
 - `--piloto N`: só as N primeiras perguntas do primeiro contexto de cada configuração (as sem memória
-  rodam completas, porque o portão precisa delas) e grava `projecao.md` na pasta da rodada.
-- `--usar-reserva` libera os US$ 4 guardados da OpenAI (só depois de a etapa direta reproduzir ou de
-  fechar a janela de depuração). `--haiku-h2 {1m,600k}` escolhe a variante do contexto longo do Haiku
-  na H2 quando roda sem nomes (padrão `1m`).
+  rodam completas, porque o portão precisa delas) e grava `projecao.md` na pasta da rodada. A projeção
+  supõe todos os contextos do tamanho do primeiro (na H1 da OAB, sai baixa no contexto longo).
+- `--usar-reserva` libera os US$ 4 guardados da OpenAI em dois momentos: durante a janela de depuração
+  da etapa direta, se ela não reproduzir (até US$ 4, Task 13), e nas secundárias da OAB, só depois que
+  a etapa direta reproduzir ou a janela fechar (Task 14).
+- `--haiku-h2 {1m,600k}`: sem nomes, escolhe a variante do contexto longo do Haiku na H2 (padrão `1m`).
+  Com nomes, a variante escolhida tem de estar entre eles e a outra não; senão o comando sai com erro
+  (nunca roda uma variante diferente da pedida).
 - O teto de um provedor pula só as configurações seguintes daquele provedor (o embedding conta como
-  OpenAI). O portão do Haiku: `oab-h2-lc-haiku*` só roda se o `oab-sem-memoria-haiku.jsonl` **da mesma
-  pasta de rodada** acertar menos de 90% das questões de 2024 e 2025; sem esse arquivo, bloqueia.
+  OpenAI). Uma exceção inesperada numa configuração vira `status=falhou: ...` e a rodada segue; o gasto
+  do livro-caixa é impresso sempre no fim.
+- O portão do Haiku: `oab-h2-lc-haiku*` só roda se o `oab-sem-memoria-haiku.jsonl` **da mesma pasta de
+  rodada** tiver resposta final para todas as 224 questões de teste da H2 (2024 e 2025) e acertar menos
+  de 90% delas; linha de base ausente ou parcial bloqueia.
 - O `custo_usd` das linhas não inclui os embeddings (centavos); o livro-caixa inclui.
 
 Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_URL`

@@ -149,6 +149,21 @@ def test_selecao_sem_nomes_inclui_so_a_variante_escolhida():
         selecionar(["nao-existe"])
 
 
+def test_haiku_h2_explicito_nunca_roda_outra_variante():
+    assert [c.nome for c in selecionar([], None)] == [c.nome for c in selecionar([], "1m")]  # padrão: 1m
+    assert [c.nome for c in selecionar(["oab-h2-lc-haiku-600k"], "600k")] == ["oab-h2-lc-haiku-600k"]
+    # com nomes e sem --haiku-h2, vale o que foi nomeado (até as duas variantes)
+    assert len(selecionar(["oab-h2-lc-haiku", "oab-h2-lc-haiku-600k"], None)) == 2
+    with pytest.raises(ValueError, match="600k conflita com oab-h2-lc-haiku nos nomes"):
+        selecionar(["oab-h2-lc-haiku"], "600k")  # a 1m nomeada contra --haiku-h2 600k
+    with pytest.raises(ValueError, match="1m conflita com oab-h2-lc-haiku-600k"):
+        selecionar(["oab-h2-lc-haiku-600k", "oab-h1-lc-4omini"], "1m")
+    with pytest.raises(ValueError, match="600k conflita"):
+        selecionar(["oab-h2-lc-haiku", "oab-h2-lc-haiku-600k"], "600k")  # as duas nomeadas: a 1m não pode rodar
+    with pytest.raises(ValueError, match="não teria efeito"):
+        selecionar(["oab-h1-lc-4omini"], "600k")  # sem variante nomeada
+
+
 def test_retomada_nao_repete_chamadas(tmp_path):  # Review Focus 3
     livro = LivroCaixa(tmp_path / "livro.json")
     fake = FakeOpenAI(lambda kw: ("100", dict(prompt=1000, cached=800, completion=5)))
@@ -217,7 +232,7 @@ def test_erro_de_api_e_refeito_na_retomada(tmp_path):  # Review Focus 2
     r1 = rodar_configuracao(cfg, ctxs, fabrica(livro, falho), None, tmp_path)
     assert len(falho.chamadas) == 3  # a rodada segue depois do erro
     assert [l["erro"] for l in ler_jsonl(caminho)] == [None, "[erro: api]", None]
-    assert (r1["feitas"], r1["erros"], r1["status"]) == (2, 1, "com erros")
+    assert (r1["feitas"], r1["erros"], r1["status"]) == (2, 1, "com erros de API")
 
     bom = FakeOpenAI(lambda kw: ("100", dict(prompt=1000, cached=0, completion=3)))
     r2 = rodar_configuracao(cfg, ctxs, fabrica(livro, bom), None, tmp_path)
@@ -256,6 +271,95 @@ def test_linha_sem_erro_nunca_e_trocada_por_uma_com_erro(tmp_path):
     assert len(fake.chamadas) == 2 and (r["feitas"], r["erros"]) == (2, 0)  # a paga não é refeita
     linhas = ler_jsonl(caminho)
     assert len(linhas) == 2 and linhas[0] == boa
+
+
+def falha_api_na_2_e_vazia_na_1(kw):
+    texto = kw["messages"][-1]["content"]
+    if "Ética 2" in texto:
+        raise RuntimeError("500 do servidor")
+    if "Ética 1" in texto:
+        return "", dict(prompt=100, cached=0, completion=0)  # resposta vazia, mas paga
+    return "B", dict(prompt=100, cached=0, completion=1)
+
+
+def test_recusa_e_resposta_vazia_sao_finais_e_so_erro_de_api_e_refeito(tmp_path):
+    livro = LivroCaixa(tmp_path / "livro.json")
+    cfg = POR_NOME["oab-sem-memoria-4omini"]
+    ctxs = contextos_sem_memoria(3)
+    caminho = tmp_path / f"{cfg.nome}.jsonl"
+    r1 = rodar_configuracao(cfg, ctxs, fabrica(livro, FakeOpenAI(falha_api_na_2_e_vazia_na_1)), None, tmp_path)
+    assert (r1["feitas"], r1["erros"], r1["recusas"], r1["status"]) == (1, 1, 1, "com erros de API")
+
+    bom = FakeOpenAI(lambda kw: ("B", dict(prompt=100, cached=0, completion=1)))
+    r2 = rodar_configuracao(cfg, ctxs, fabrica(livro, bom), None, tmp_path)
+    assert len(bom.chamadas) == 1 and "Ética 2" in bom.chamadas[0]["messages"][-1]["content"]
+    assert (r2["feitas"], r2["erros"], r2["recusas"], r2["status"]) == (2, 0, 1, "completa")
+    vazia = next(l for l in ler_jsonl(caminho) if l["pergunta_id"] == "1001")
+    assert vazia["erro"] == "[erro: resposta vazia]" and vazia["acerto"] is False and vazia["custo_usd"] > 0
+
+    recusa = FakeAnthropic(stop_reason="refusal")
+    haiku = POR_NOME["oab-sem-memoria-haiku"]
+    for _ in range(2):
+        r = rodar_configuracao(haiku, contextos_sem_memoria(1), fabrica(livro, fake_anthropic=recusa), None, tmp_path)
+    assert len(recusa.chamadas) == 1 and (r["feitas"], r["erros"], r["recusas"]) == (0, 0, 1)
+
+
+def test_falha_na_avaliacao_nao_perde_a_resposta_paga(tmp_path, monkeypatch):
+    def avaliar_quebrado(fonte, saida, gabarito):
+        raise KeyError("bug na avaliação")
+
+    monkeypatch.setattr(rodar, "avaliar", avaliar_quebrado)
+    livro = LivroCaixa(tmp_path / "livro.json")
+    fake = FakeOpenAI(lambda kw: ("B", dict(prompt=100, cached=0, completion=1)))
+    cfg = POR_NOME["oab-sem-memoria-4omini"]
+    ctxs = contextos_sem_memoria(2)
+    r = rodar_configuracao(cfg, ctxs, fabrica(livro, fake), None, tmp_path)
+    linhas = ler_jsonl(tmp_path / f"{cfg.nome}.jsonl")
+    assert len(linhas) == 2 and r["feitas"] == 2
+    for l in linhas:
+        assert l["saida"] == "B" and l["erro"] is None and l["acerto"] is False
+        assert "KeyError" in l["metricas"]["erro_avaliacao"]
+    rodar_configuracao(cfg, ctxs, fabrica(livro, fake), None, tmp_path)
+    assert len(fake.chamadas) == 2  # a resposta paga não é refeita
+
+
+def test_falha_numa_configuracao_nao_para_as_outras(tmp_path):
+    livro = LivroCaixa(tmp_path / "livro.json")
+    fake = FakeOpenAI(lambda kw: ("B", dict(prompt=100, cached=0, completion=1)))
+    (tmp_path / "oab-sem-memoria-haiku.jsonl").write_text(
+        '{"pergunta_id": "1000"}\nlixo no meio\n{"pergunta_id": "1001"}\n', encoding="utf-8")
+
+    def carregar(cfg):
+        if cfg.conjunto == "oab_h1":
+            raise FileNotFoundError("dados/oab/h1.json")
+        return contextos_sem_memoria(2)
+
+    cfgs = [POR_NOME["oab-sem-memoria-haiku"], POR_NOME["oab-h1-lc-4omini"], POR_NOME["oab-sem-memoria-4omini"]]
+    rs = executar(cfgs, tmp_path, carregar, fabrica(livro, fake), None)
+    assert rs[0]["status"].startswith("falhou:") and "oab-sem-memoria-haiku.jsonl" in rs[0]["status"]
+    assert rs[1]["status"].startswith("falhou:") and "h1.json" in rs[1]["status"]
+    assert rs[2]["status"] == "completa" and len(fake.chamadas) == 2
+
+
+def test_falha_ao_compactar_no_fim_nao_perde_o_resultado(tmp_path, monkeypatch, capsys):
+    livro = LivroCaixa(tmp_path / "livro.json")
+    cfg = POR_NOME["oab-sem-memoria-4omini"]
+    ctxs = contextos_sem_memoria(3)
+    caminho = tmp_path / f"{cfg.nome}.jsonl"
+    rodar_configuracao(cfg, ctxs, fabrica(livro, FakeOpenAI(falha_api_na_2_e_vazia_na_1)), None, tmp_path)
+    original = rodar._regravar
+
+    def regravar_bloqueado(caminho, linhas):
+        raise PermissionError("arquivo aberto em outro programa")
+
+    monkeypatch.setattr(rodar, "_regravar", regravar_bloqueado)
+    bom = FakeOpenAI(lambda kw: ("B", dict(prompt=100, cached=0, completion=1)))
+    r = rodar_configuracao(cfg, ctxs, fabrica(livro, bom), None, tmp_path)
+    assert (r["feitas"], r["erros"], r["recusas"], r["status"]) == (2, 0, 1, "completa")
+    assert "compactar" in capsys.readouterr().err and len(ler_jsonl(caminho)) == 4  # a de erro velha ainda está lá
+    monkeypatch.setattr(rodar, "_regravar", original)
+    rodar_configuracao(cfg, ctxs, fabrica(livro, bom), None, tmp_path)
+    assert len(ler_jsonl(caminho)) == 3 and len(bom.chamadas) == 1  # a próxima execução compacta, sem chamar nada
 
 
 def test_sem_memoria_chama_o_cliente_direto(tmp_path):
@@ -305,35 +409,64 @@ def test_teto_do_embedding_conta_como_openai(tmp_path):
     assert fake_openai.chamadas_embeddings == [] and fake_openai.chamadas == []
 
 
-def gravar_linha_de_base(pasta, acertos, anos=(2024, 2025)):
-    """Linhas do `oab-sem-memoria-haiku`: as de 2024-2025 com `acertos` e cinco de 2023, todas erradas."""
+def gravar_linha_de_base(pasta, acertos, prefixo="", anos=(2024, 2025)):
+    """Linhas do `oab-sem-memoria-haiku`: ids `{prefixo}{i}` de 2024-2025 com `acertos`, e cinco de 2023 erradas."""
     caminho = pasta / "oab-sem-memoria-haiku.jsonl"
     for i, a in enumerate(acertos):
-        anexar_jsonl(caminho, {"pergunta_id": str(i), "ano": anos[i % 2], "acerto": a, "erro": None})
+        anexar_jsonl(caminho, {"pergunta_id": f"{prefixo}{i}", "ano": anos[i % 2], "acerto": a, "erro": None})
     for i in range(5):
         anexar_jsonl(caminho, {"pergunta_id": f"antiga-{i}", "ano": 2023, "acerto": False, "erro": None})
+
+
+TESTE_H2 = {str(i) for i in range(10)}
 
 
 def test_portao_haiku_h2(tmp_path):
     a, b = tmp_path / "a", tmp_path / "b"
     gravar_linha_de_base(a, [True] * 9 + [False])
     gravar_linha_de_base(b, [True] * 8 + [False] * 2)
-    assert portao_haiku_h2(a) == (False, approx(0.9))
-    assert portao_haiku_h2(b) == (True, approx(0.8))
+    assert portao_haiku_h2(a, TESTE_H2) == (False, approx(0.9))
+    assert portao_haiku_h2(b, TESTE_H2) == (True, approx(0.8))
 
 
-def test_portao_bloqueia_sem_linha_de_base_e_libera_abaixo_de_90(tmp_path, capsys):
-    libera, acuracia = portao_haiku_h2(tmp_path)
+def test_portao_exige_resposta_para_toda_questao_de_teste(tmp_path, capsys):
+    libera, acuracia = portao_haiku_h2(tmp_path, TESTE_H2)  # sem arquivo
     assert not libera and math.isnan(acuracia)
+    gravar_linha_de_base(tmp_path, [True] * 2 + [False] * 7)  # 9 de 10: falta a "9"
+    libera, acuracia = portao_haiku_h2(tmp_path, TESTE_H2)
+    assert not libera and math.isnan(acuracia)
+    assert "faltam 1 de 10" in capsys.readouterr().out
+    caminho = tmp_path / "oab-sem-memoria-haiku.jsonl"
+    anexar_jsonl(caminho, {"pergunta_id": "9", "ano": 2025, "acerto": False, "erro": "[erro: api]"})
+    assert portao_haiku_h2(tmp_path, TESTE_H2)[0] is False  # erro de API não é resposta
+    anexar_jsonl(caminho, {"pergunta_id": "9", "ano": 2025, "acerto": False, "erro": "[erro: recusa]"})
+    assert portao_haiku_h2(tmp_path, TESTE_H2) == (True, approx(0.2))  # recusa é resposta final, errada
+
+
+def test_portao_no_executar_bloqueia_sem_linha_de_base_e_libera_abaixo_de_90(tmp_path, capsys):
     livro, fake_anthropic = LivroCaixa(tmp_path / "livro.json"), FakeAnthropic()
     cfg = POR_NOME["oab-h2-lc-haiku"]
-    rs = executar([cfg], tmp_path, lambda c: contextos_oab("oab_h2"), fabrica(livro, fake_anthropic=fake_anthropic), None)
-    assert rs[0]["status"].startswith("pulada: portão") and fake_anthropic.chamadas == []
+
+    def h2(c):
+        return contextos_oab("oab_h2", n=10)  # ids oab_h2-0 a oab_h2-9
+
+    rs = executar([cfg], tmp_path, h2, fabrica(livro, fake_anthropic=fake_anthropic), None)
+    assert rs[0]["status"] == "pulada: portão" and fake_anthropic.chamadas == []
     assert "portão" in capsys.readouterr().out
 
-    gravar_linha_de_base(tmp_path, [True] * 8 + [False] * 2)
-    rs = executar([cfg], tmp_path, lambda c: contextos_oab("oab_h2"), fabrica(livro, fake_anthropic=fake_anthropic), None)
-    assert rs[0]["status"] == "completa" and len(fake_anthropic.chamadas) == 2
+    gravar_linha_de_base(tmp_path, [True] * 4 + [False], prefixo="oab_h2-")  # 80%, mas só 5 das 10
+    rs = executar([cfg], tmp_path, h2, fabrica(livro, fake_anthropic=fake_anthropic), None)
+    assert rs[0]["status"] == "pulada: portão" and fake_anthropic.chamadas == []  # linha de base parcial: fechado
+
+    (tmp_path / "oab-sem-memoria-haiku.jsonl").unlink()
+    gravar_linha_de_base(tmp_path, [True] * 8 + [False] + [True], prefixo="oab_h2-")
+    rs = executar([cfg], tmp_path, h2, fabrica(livro, fake_anthropic=fake_anthropic), None)
+    assert rs[0]["status"] == "pulada: portão" and fake_anthropic.chamadas == []  # 90%: fechado
+
+    (tmp_path / "oab-sem-memoria-haiku.jsonl").unlink()
+    gravar_linha_de_base(tmp_path, [True] * 8 + [False] * 2, prefixo="oab_h2-")
+    rs = executar([cfg], tmp_path, h2, fabrica(livro, fake_anthropic=fake_anthropic), None)
+    assert rs[0]["status"] == "completa" and len(fake_anthropic.chamadas) == 10
 
 
 def test_projecao_do_piloto():
@@ -361,6 +494,7 @@ def test_piloto_limita_as_perguntas_e_grava_a_projecao(tmp_path):
     assert "direta-mhqa-lc-4omini" in texto and "1.2000" in texto
     assert "oab-sem-memoria-4omini" in texto and "0.7500" in texto
     assert "1.9500" in texto  # total da OpenAI
+    assert "do tamanho do primeiro" in texto  # aviso do viés da projeção
 
 
 def test_jsonl_do_rodador_preserva_acentos(tmp_path):  # Review Focus 5
@@ -387,7 +521,24 @@ def test_main_roda_pelo_nome_e_imprime_o_resumo(tmp_path, monkeypatch, capsys):
                         lambda modelo, livro, temperatura: ClienteOpenAI(modelo, livro, temperatura, bruto=fake))
     assert main(["oab-sem-memoria-4omini", "--rodada", str(tmp_path / "r")]) == 0
     saida = capsys.readouterr().out
-    assert "oab-sem-memoria-4omini: feitas=3, erros=0, custo=US$ " in saida and "status=completa" in saida
+    assert ("oab-sem-memoria-4omini: feitas=3, erros_api=0, recusas_vazias=0, custo=US$ " in saida
+            and "status=completa" in saida)
     assert "OpenAI US$" in saida and "Anthropic US$" in saida  # gasto do livro-caixa no fim
     assert len(ler_jsonl(tmp_path / "r" / "oab-sem-memoria-4omini.jsonl")) == 3
     assert main(["nao-existe", "--rodada", str(tmp_path / "r")]) == 2
+    assert main(["oab-h2-lc-haiku", "--haiku-h2", "600k", "--rodada", str(tmp_path / "r")]) == 2
+
+
+def test_main_imprime_o_gasto_mesmo_quando_algo_quebra(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(rodar, "LIVRO_CAIXA", tmp_path / "livro.json")
+
+    def projecao_quebrada(*a, **k):
+        raise OSError("disco cheio")
+
+    monkeypatch.setattr(rodar, "carregar_conjunto", lambda cfg: contextos_sem_memoria(1))
+    monkeypatch.setattr(rodar, "fabricar_cliente", lambda modelo, livro, temperatura: ClienteOpenAI(
+        modelo, livro, temperatura, bruto=FakeOpenAI()))
+    monkeypatch.setattr(rodar, "gravar_projecao", projecao_quebrada)
+    with pytest.raises(OSError):
+        main(["oab-sem-memoria-4omini", "--piloto", "1", "--rodada", str(tmp_path / "r")])
+    assert "gasto no livro-caixa" in capsys.readouterr().out
