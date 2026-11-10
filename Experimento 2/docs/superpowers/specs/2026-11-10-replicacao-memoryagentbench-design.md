@@ -1,0 +1,330 @@
+# Experimento 2: replicação do MemoryAgentBench, direta e na OAB
+
+Data: 2026-11-10. Status: rascunho para aprovação do Pedro.
+
+## 1. Intenção
+
+A residência quer sair com um mapa de qual memória faz sentido para qual caso. O mapa já existe,
+tirado das leituras: a tabela "Quando usar cada abordagem" da semana 7 e
+`Experimento 1/RESIDENCIA/conteudos_gerados_por_llm/mapa-memoria-agente.pdf`. O que falta é
+evidência própria. O Experimento 1 testou uma região do mapa (fatos de uma usuária que mudam entre
+sessões). O Experimento 2 testa duas afirmações de um artigo revisado por pares para saber **se o
+autor estava certo**, e depois se a afirmação vale num domínio novo: questões da OAB em português.
+
+O artigo é o MemoryAgentBench: Hu, Wang e McAuley, "Evaluating Memory in LLM Agents via
+Incremental Multi-Turn Interactions", ICLR 2026, arXiv 2507.05257. O PDF traduzido está em
+`Experimento 1/artigos/MemoryAgentBench (1).pdf`. Código: github.com/HUST-AI-HYZ/MemoryAgentBench
+(MIT). Dados: Hugging Face `ai-hyz/MemoryAgentBench`.
+
+Por que esse artigo: as afirmações dele são do tipo "qual memória para qual caso", o código e os
+dados são públicos (a replicação direta é possível), e as categorias de agente dele batem com as
+quatro configurações do Experimento 1 (sem memória, contexto completo, passiva, ativa).
+
+## 2. As afirmações e como cada uma é testada
+
+Toda afirmação passa por duas etapas. Rodar só na OAB não separa "o autor errou" de "lei é
+diferente do que ele testou"; a etapa direta resolve isso.
+
+- **Etapa direta:** dados e protocolo do autor, com o modelo do autor, para ver se o número se
+  repete.
+- **Etapa conceitual:** a mesma afirmação nas questões da OAB, para ver se vale fora dos dados dele.
+
+### H1. O RAG vence o contexto longo quando é preciso achar um trecho preciso
+
+Achado (1) do artigo, §4.2: "superioridade dos métodos RAG na recuperação precisa".
+
+- **Direta:** dataset MH-Doc QA (1 contexto, 100 perguntas, contexto médio de 421K tokens, métrica
+  SubEM, sem juiz). No artigo, Tabela 3: GPT-4o-mini com contexto longo 43,0; BM25 56,0.
+- **OAB:** 300 questões sorteadas das provas de 2018 a 2023, estratificadas por matéria (ver §5). O
+  agente de contexto longo recebe a lei da matéria inteira (ou o que couber na janela). Os agentes RAG recuperam artigos dessa mesma
+  lei. Assim os dois têm a mesma memória e diferem só em como a leem, que é o ponto do artigo.
+  Variante secundária, barata: o RAG sobre o corpus inteiro, que é o uso realista.
+
+### H2. O contexto longo vence o RAG quando é preciso aprender com exemplos
+
+Achado (2) do artigo, §4.2: "superioridade dos modelos de contexto longo no aprendizado em tempo de
+teste".
+
+- **Direta:** BANKING77 e CLINC150, as tarefas de classificação multiclasse (MCC) do artigo, com 100
+  perguntas cada, métrica acurácia, sem juiz. No artigo, a média das cinco tarefas MCC (Tabela 3):
+  GPT-4o-mini com contexto longo 82,0; BM25 75,4. Os números por dataset estão no apêndice; quem
+  constrói confere.
+- **OAB:** a memória são as provas até 2023, com gabarito. As questões de teste são as de 2024 e
+  2025 (229 antes de filtrar), que ficam depois do corte de treino do GPT-4o-mini (outubro de 2023,
+  segundo fontes secundárias). O contexto longo recebe as questões antigas mais recentes que
+  couberem na janela. O RAG indexa todas as questões antigas e recupera as k mais parecidas.
+
+### O que não dá para replicar
+
+- **Quatro dos seis modelos de contexto longo.** Claude 3.7 Sonnet e Gemini 2.0 Flash já saíram do
+  ar, o GPT-5-mini sai em 2026-12-11, e o GPT-4o custaria sozinho mais que o teto. O GPT-4.1-mini
+  fica opcional.
+- **A metade "compreensão de longo alcance" do achado (2).** A tarefa de resumo depende do GPT-4o
+  como juiz, que também sai do ar, e o Detective QA tem só 71 perguntas.
+- **O achado (3), esquecimento seletivo** (no multi-hop, nenhum método passa de 28%). Fica fora por
+  decisão do Pedro; na OAB também não haveria como testá-lo, porque o corpus não guarda versões de
+  lei.
+- **Os agentes agênticos e os RAG com estrutura** (MemGPT, MIRIX, Self-RAG, GraphRAG, HippoRAG, Mem0
+  e outros). Ficam fora pelo orçamento e porque as duas afirmações não dependem deles.
+- **As ablações do artigo** (tamanho de chunk e top-k, §4.3), por decisão do Pedro. A única ablação
+  do experimento é a de k na OAB H1, que desenha a curva qualidade × tokens.
+- **Diferenças pequenas por dataset.** Na H2 direta, a diferença média do artigo é de 6,6 pontos. Com
+  200 perguntas, isso fica no limite do detectável; se der inconclusivo, o documento diz que o
+  orçamento não tinha resolução para mais.
+
+### Regra de decisão (registrada antes de rodar)
+
+- **Uma comparação primária por afirmação e etapa**, quatro ao todo (H1 direta, H2 direta, H1 OAB,
+  H2 OAB). A primária é sempre o par que o artigo reporta: **GPT-4o-mini com
+  contexto longo × GPT-4o-mini com RAG BM25**. Só a primária dá veredito.
+- Na H2 direta, BANKING77 e CLINC150 entram juntos na primária: 200 perguntas, com o bootstrap
+  reamostrando dentro de cada dataset. O resultado por dataset é secundário.
+- **Secundárias** (RAG por embedding × contexto longo, os pares do Haiku, cada dataset separado, a
+  ablação de k) são reportadas com intervalo, sem veredito. Se divergirem da primária, a divergência
+  vai para o documento e é discutida, mas não muda o veredito.
+- Sem correção para múltiplas comparações entre as quatro primárias: cada uma responde uma pergunta
+  diferente, registrada antes.
+- Comparações sempre pareadas: as mesmas questões em todas as configurações.
+- Intervalo de 95% por bootstrap pareado (10.000 reamostragens) para a diferença de acurácia.
+- **Confirmada** se o intervalo exclui zero na direção do artigo. **Contrariada** se exclui zero na
+  direção oposta. **Inconclusiva** se contém zero. Inconclusivo é resultado e vai para o documento
+  como está.
+- Na etapa direta há um segundo teste: o número do artigo cai dentro do nosso intervalo de 95%?
+  Se cai, a medida foi reproduzida.
+- Com 100 perguntas, o intervalo de uma acurácia isolada tem uns ±9 pontos; a diferença pareada é
+  mais estreita. Diferenças de 2 a 3 pontos não são detectáveis neste orçamento, e o documento diz
+  isso.
+
+## 3. Configurações
+
+| Configuração | Etapa direta | OAB H1 | OAB H2 |
+|---|---|---|---|
+| Sem memória (só a pergunta) | não | GPT-4o-mini, Haiku 5.5 (3.377 questões válidas, todos os anos) | idem |
+| Contexto longo, GPT-4o-mini (janela 128K) | sim | sim | sim |
+| Contexto longo, Haiku 5.5 (janela 1M) | não | sim | sim |
+| RAG BM25, leitor GPT-4o-mini | sim | sim | sim |
+| RAG `text-embedding-3-small`, leitor GPT-4o-mini | sim | sim | sim |
+| RAG BM25 e embedding, leitor Haiku 5.5 | não | sim | sim |
+| Contexto longo, GPT-4.1-mini (opcional) | só se sobrar orçamento | não | não |
+
+- **Modelos.** O GPT-4o-mini é o modelo de todos os agentes RAG do artigo e o par da comparação
+  central; é a replicação fiel mínima. O Haiku 5.5 é a extensão atual: substitui os modelos de
+  contexto longo que saíram do ar e é da mesma classe do GPT-4o-mini. Ele não entra na etapa direta,
+  que fica só com modelos do artigo.
+- **Fora do escopo:** agentes agênticos (Self-RAG, MemGPT, MIRIX), RAG com estrutura (GraphRAG,
+  HippoRAG, RAPTOR, MemoRAG, Mem0, Cognee, Zep), Contriever, Qwen3-Embedding,
+  `text-embedding-3-large`, as competências de compreensão de longo alcance e esquecimento
+  seletivo, Lost in the Middle, construção de trecho-ouro, juiz LLM.
+- **Ablação de orçamento (barata):** na OAB H1, o RAG com k = 2, 5, 10 e 20. Isso dá a curva
+  qualidade × tokens que motivou o experimento.
+
+## 4. Protocolo
+
+Seguir o artigo onde ele define algo; adaptar só o que a OAB obriga, e registrar cada adaptação.
+
+- **O código é o do autor.** O Pedro pediu que a replicação reproduza o artigo, e o caminho mais
+  fiel é rodar o próprio código. O repositório tem licença MIT, então as partes que os três agentes
+  usam (montagem da memória, chunking, prompts, agente de contexto longo, agente BM25, agente de
+  embedding) são copiadas para o pacote do experimento, com atribuição e o commit fixado. A única
+  troca é o cliente de LLM, substituído por um que passa pelo livro-caixa de custo (§6). A OAB é
+  convertida para o formato de dados do autor, para que o mesmo código rode as duas etapas.
+  - Plano B, se as dependências não funcionarem no Windows nem no WSL: reimplementar esses agentes
+    copiando literalmente do repositório os prompts, os tamanhos de chunk, o k e os tetos de saída.
+    Nesse caso vale o teste de fidelidade da §9.
+- **Parâmetros do artigo:** top-k = 10; tamanho de chunk 512 para o MH-QA e 4096 para as MCC
+  (Tabela 15); teto de saída de 100 tokens no MH-QA e 20 nas MCC (Tabela 14). Os prompts são os do autor (Apêndice D), em inglês, sem tradução.
+- **Agente de contexto longo:** a memória é a sequência de chunks no formato do autor. Se não cabe
+  na janela, aplica a mesma política do código do autor (a confirmar no repositório; a expectativa é
+  descartar os chunks mais antigos). Na OAB H1 isso significa que o GPT-4o-mini vê só parte das
+  leis grandes (CPC, CC, CF, CLT passam de 128K), e o Haiku vê todas inteiras. Isso é uma
+  limitação registrada, e também um contraste útil.
+- **OAB:**
+  - Prompts em português com acentos. O modelo responde só a letra; a resposta é extraída por
+    regex; letra inválida conta como erro e fica registrada.
+  - Teto de saída de 20 tokens.
+  - Haiku 5.5 sem raciocínio (`thinking: {type: "disabled"}`, aceito com effort `high` ou abaixo),
+    para ficar comparável ao GPT-4o-mini, que não raciocina. Quem constrói confirma na API.
+- **Amostragem:** OpenAI com temperatura 0. Na Anthropic, `temperature`, `top_p` e `top_k` dão 400
+  a partir da versão de API 2026-10-21; o Haiku roda com a amostragem padrão. Registrar isso.
+- **Cache ligado nas duas APIs.** O artigo calcula custos com cache (Apêndice I). Na OpenAI o cache é
+  automático para prefixos idênticos; na Anthropic precisa de `cache_control` no bloco de contexto
+  compartilhado. As perguntas que usam o mesmo contexto rodam em sequência, sem intervalo, para o
+  cache não expirar. A contagem registra tokens totais, cacheados e escritos no cache, por chamada.
+  **Isto é o contrário da regra do Experimento 1** (lá o cache foi proibido para a contagem ter um
+  significado só) e vai para o `CLAUDE.md` do Experimento 2.
+- **Sem fallbacks** para outro modelo, sem `tool_choice` forçado, como no Experimento 1.
+
+## 5. Dados da OAB
+
+Fonte: o banco Supabase do projeto Atlas (projeto `gqnejwbuloklbelsufnj`), lido com a service key do
+`Experimento 2/.env`. **Só leitura.** Verificado em 2026-11-10:
+
+- `questoes_oab`: 3.395 questões, 2010 a 2025 (2024: 152; 2025: 77). Gabarito equilibrado (A 791,
+  B 893, C 879, D 832); o acaso dá ~25% e "sempre B" dá 26,3%. 18 questões têm menos de quatro
+  alternativas e saem. Nenhuma marcada como anulada.
+- `law_articles`: 11.954 artigos de 44 leis, um artigo por chunk, ~1,91M tokens no tokenizador
+  `o200k_base` (GPT-4o-mini). Maiores: CPC 265K, CC 168K, CF 166K, CLT 144K. O maior artigo isolado
+  tem 12.841 tokens (CPC, provável defeito do parser).
+- `embeddings`: 14.368 linhas: 11.954 `law_article`, 204 `document_chunk` e **2.210 `questao`**.
+- **Vazamento:** as questões de 2010 a 2018 estão no mesmo índice das leis, e a busca devolve a
+  questão com o gabarito. **Nada do Experimento 2 usa as linhas `source_type='questao'`.** O RAG da
+  OAB H1 indexa só `law_articles`.
+- Tokenizador do Haiku: 1,71× mais tokens que o `o200k_base` no mesmo texto jurídico (medido com
+  `count_tokens` numa amostra de 60 mil caracteres).
+
+Decisões de dados:
+
+- **Snapshot local:** baixar uma vez para `Experimento 2/dados/` (fora do git), com um manifesto
+  versionado (contagens e sha256). Toda rodada lê do snapshot, nunca do banco.
+- **Embeddings re-gerados localmente** com `text-embedding-3-small` (~US$ 0,04 para o corpus inteiro)
+  em vez de baixar os vetores do banco. O banco usa o mesmo modelo, então é equivalente e mais
+  simples.
+- **BM25 local** (por exemplo `bm25s` com stemmer de português), não a RPC do banco: a RPC usa
+  `plainto_tsquery` com E lógico e, para uma consulta de sete palavras, devolveu um resultado só.
+- **Anos da OAB H1: provas de 2018 a 2023** (decisão do Pedro, opção A). O corpus é uma foto das leis
+  (o CPC de uma edição de 2016, a CLT atual, a Lei 14.133 no lugar da 8.666), e o gabarito segue a lei
+  vigente na data da prova. A partir de 2018 a lei cobrada fica mais próxima do corpus (CPC de 2015,
+  CLT depois da reforma de 2017), e não há sobreposição com o teste da H2. O ruído que sobra (Pacote
+  Anticrime de 2019, Lei 14.133 de 2021) é registrado como limitação. Depois de filtrar e tirar
+  duplicatas, sobram ~970 questões para sortear 300.
+- **Matéria reclassificada** nas provas de 2018 a 2023, porque os rótulos do banco são ruins depois de
+  2018 e é o rótulo que decide qual lei o agente recebe. Classificação pelo GPT-4o-mini (~US$ 0,06),
+  com uma amostra de 30 questões conferida à mão antes da rodada.
+- **Matéria → lei** para a OAB H1. Padrão (quem constrói pode ajustar e registra):
+  Civil → CC; Processo Civil → CPC; Constitucional → CF; Trabalho e Processo do Trabalho → CLT;
+  Penal → CP; Processo Penal → CPP; Ética → EAOAB + Regulamento Geral + CED; Tributário → CTN;
+  ECA → ECA; Consumidor → CDC; Administrativo, Empresarial, Ambiental, Eleitoral e Direitos Humanos
+  → todas as leis do eixo correspondente. Internacional e Filosofia ficam fora da H1.
+- **OAB H2:** remover da memória qualquer questão antiga quase igual a uma questão de teste (por
+  exemplo, similaridade de caracteres acima de 0,8), e as duplicatas conhecidas (prova 2018-01 ≈
+  2018-25, `2022-02-3` e `2022-02-3-fixed`).
+
+## 6. Orçamento
+
+Tetos do Pedro: **US$ 20 na OpenAI e US$ 30 na Anthropic.** Preços oficiais de 2026-11-10, por
+milhão de tokens: GPT-4o-mini US$ 0,15 de entrada (US$ 0,075 com cache) e US$ 0,60 de saída;
+Haiku 5.5 US$ 0,10 e US$ 0,50 até 100K tokens por chamada, US$ 0,50 e US$ 2,50 acima, escrita no
+cache ~1,25× e leitura ~0,1× da entrada; `text-embedding-3-small` US$ 0,02.
+
+| Parte | OpenAI (com cache) | Anthropic (com cache) |
+|---|---|---|
+| Direta: MH-QA, BANKING77, CLINC150 | ~US$ 5,20 | — |
+| Sem memória, 3.377 questões | ~US$ 0,25 | ~US$ 0,25 |
+| Reclassificação de matéria (2018 a 2023) | ~US$ 0,06 | — |
+| OAB H1 (300 questões) + ablação de k | ~US$ 3,50 | ~US$ 5,90 |
+| OAB H2 (229 questões) | ~US$ 2,40 | ~US$ 11,70 |
+| Embeddings | ~US$ 0,10 | — |
+| **Total estimado** | **~US$ 11,50** | **~US$ 18** |
+
+- Na OpenAI, o total mais a reserva de US$ 4 para depuração (ver "Se a etapa direta não reproduzir")
+  dá ~US$ 15,50, dentro do teto de US$ 20.
+- Sem cache, a OpenAI daria ~US$ 19 (no limite) e a Anthropic passaria de US$ 140 (não cabe). **O
+  cache é obrigatório**, e o piloto existe para confirmá-lo.
+- O maior item é o contexto longo do Haiku na H2: até ~950K tokens por chamada (a memória inteira
+  daria 1,37M tokens do Haiku e não cabe na janela). Se o piloto mostrar risco, a memória do Haiku na
+  H2 cai para 600K tokens (~US$ 7,30).
+- O experimento 1 gastou mais do que a estimativa (US$ 6,14 contra US$ 3 a 5). Na Anthropic, a margem
+  de 50% fica dentro do teto (~US$ 27). Na OpenAI, a margem de 50% sozinha cabe (~US$ 17,30),
+  mas somada à reserva passaria um pouco do teto; o livro-caixa e a ordem de prioridade garantem
+  que o que ficar de fora seja secundário.
+
+Travas obrigatórias:
+
+1. **Teto no código.** Um livro-caixa persistente por provedor soma o custo de cada chamada a partir
+   do `usage` devolvido pela API (tokens normais, cacheados e escritos no cache) e **recusa a próxima
+   chamada** se ela puder passar do teto. O livro-caixa sobrevive entre rodadas.
+2. **Piloto primeiro:** ~10 questões por configuração, para medir tokens reais e confirmar que o cache
+   pega (`cached_tokens` na OpenAI, `cache_read_input_tokens` na Anthropic). Só depois a rodada
+   completa.
+3. **Ordem por prioridade:**
+   1. As rodadas das comparações primárias (contexto longo e BM25 do GPT-4o-mini), primeiro na etapa
+      direta e depois na OAB.
+   2. Sem memória.
+   3. As secundárias baratas (RAG por embedding, ablação de k, RAG do Haiku).
+   4. O contexto longo do Haiku.
+   5. O GPT-4.1-mini opcional.
+
+   Se o livro-caixa cortar algo, corta do fim da lista.
+4. **Portões do Haiku**, decididos antes de qualquer rodada cara dele:
+   - O "sem memória" do Haiku roda antes do contexto longo do Haiku. Se ele acertar 90% ou mais das
+     questões de teste da H2 (2024 e 2025), o modelo provavelmente já as viu e sobra pouco espaço
+     para a memória ajudar. Nesse caso o contexto longo do Haiku na H2 não roda, e o documento diz
+     por quê.
+   - Depois do piloto, se a projeção de gasto na Anthropic passar de US$ 24 (80% do teto), o
+     contexto longo do Haiku na H2 roda com 600K tokens de memória. Ele é registrado como outra
+     configuração ("contexto longo Haiku 600K"), não como a mesma.
+
+### Se a etapa direta não reproduzir
+
+- A etapa direta roda e termina antes da OAB, porque a OAB usa o mesmo código.
+- Um teste offline compara, texto por texto, os prompts montados pela reimplementação com os
+  templates do repositório do autor.
+- Se o número de uma primária ficar fora do nosso intervalo, há uma janela de depuração de até três
+  dias úteis e US$ 4 reservados do teto da OpenAI. Nessa janela, se for viável, roda-se o código do
+  autor num subconjunto para comparar.
+- Se ainda assim não reproduzir, a OAB segue, e o documento registra: "não reproduzido; não foi
+  possível separar o autor da reimplementação".
+
+## 7. Prazo
+
+O GPT-4o-mini, o GPT-4o e o GPT-4.1-mini saem da API da OpenAI em **2027-01-14**; o GPT-5-mini em
+2026-12-11 (deprecations da OpenAI, consultado em 2026-11-10). O Claude 3.7 Sonnet saiu em
+2026-02-19 e o Gemini 2.0 Flash em 2026-06-01. **Todas as rodadas com modelos da OpenAI terminam até
+2026-12-20**, deixando três semanas para repetir o que falhar. A perda de modelos é ela mesma um
+achado: menos de um ano depois da ICLR, dois dos seis modelos de contexto longo do artigo já não
+existem, e o documento final registra isso.
+
+## 8. Entregas
+
+- `resultados/<AAAAMMDD-HHMMSS>/`: um JSON por configuração e etapa, com cada resposta, se acertou,
+  tokens normais, cacheados e escritos no cache, e custo; e uma tabela-resumo em Markdown.
+- Tabela por afirmação e etapa: acurácia com intervalo de 95%, diferença pareada com intervalo,
+  veredito (confirmada, contrariada, inconclusiva), tokens e custo por configuração.
+- Gráfico qualidade × tokens da OAB H1, com a ablação de k e os pontos de contexto longo.
+- Documento da entrega em `docs/`, no estilo do documento da semana 8 do Experimento 1: hipótese
+  escrita antes, resultado, leitura honesta, limitações, e o que cada afirmação diz sobre o mapa da
+  residência.
+
+## 9. Testes
+
+Os testes nunca chamam API; usam clientes falsos, como no Experimento 1. Mínimo:
+
+- O livro-caixa soma custos certos para usage com e sem cache e recusa a chamada que passaria do
+  teto.
+- A extração da letra aceita respostas válidas e marca as inválidas.
+- A montagem do contexto longo respeita a janela e a política de descarte.
+- O RAG devolve k itens, de forma determinística, e nunca devolve linha `questao` na OAB H1.
+- A separação da H2 não deixa questão de teste nem quase-duplicata dela na memória.
+- O bootstrap pareado devolve intervalo que contém a diferença observada.
+- Fidelidade: os prompts montados para a etapa direta são iguais, texto por texto, aos templates do
+  repositório do autor (obrigatório no plano B; no plano A, confirma que a cópia não alterou nada).
+- A conversão da OAB para o formato do autor preserva questão, alternativas e gabarito.
+
+As rodadas reais são eval: rodam, e o número é comparado; nunca têm assert de igualdade.
+
+## 10. Restrições
+
+- Tetos de US$ 20 (OpenAI) e US$ 30 (Anthropic); prazo de 2026-12-20 para a OpenAI.
+- Windows; Python com `uv`; acentos exigem `PYTHONUTF8=1` em saída redirecionada.
+- PT-BR com acentos em tudo que o modelo lê na OAB e em tudo que o professor lê. Na etapa direta, os
+  prompts do autor ficam em inglês, sem tradução.
+- O Experimento 1 não é alterado.
+
+## 11. Anti-objetivos
+
+- Passar dos tetos, mesmo "só para terminar uma configuração".
+- Qualquer linha `questao` do banco dentro de um índice de RAG.
+- Configurações comparadas sobre questões diferentes, ou com modelos diferentes dentro da mesma
+  comparação.
+- Afirmar mais do que o intervalo permite: inconclusivo é inconclusivo.
+- Escrever no banco do Atlas.
+
+## 12. O que fica com quem constrói
+
+- Layout do pacote e nomes de módulos; seguir o espírito do Experimento 1 ("o mais simples que ainda
+  ensina", um arquivo que se lê de cima para baixo por agente).
+- Quais arquivos do repositório do autor copiar, e como isolar as dependências pesadas que os três
+  agentes não usam (torch, hipporag). Windows nativo ou WSL.
+- Tokenização de português para o BM25 na OAB (o artigo é em inglês), formato do snapshot, limiar de
+  quase-duplicata.
+- Número exato de questões antigas que cabem em cada janela.
