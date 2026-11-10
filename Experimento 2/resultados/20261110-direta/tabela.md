@@ -9,12 +9,11 @@ Nas MCC, a acurácia é a leitura flexível de `label:` (ver Decisões do piloto
 | Comparação | n | Contexto longo | RAG BM25 | Diferença | Veredito | Nota |
 |---|---|---|---|---|---|---|
 | H1 direta | 100 | 42.0% [32.0%; 52.0%] | 56.0% [46.0%; 66.0%] | +14.0 pp [+2.0; +26.0] | confirmada |  |
-| H2 direta | 10 | 60.0% [30.0%; 90.0%] | 80.0% [50.0%; 100.0%] | +20.0 pp [+0.0; +50.0] | sem veredito | parcial (10 de 500) |
+| H2 direta | 500 | 77.0% [73.4%; 80.4%] | 76.8% [73.4%; 80.2%] | -0.2 pp [-2.8; +2.4] | inconclusiva |  |
 | H1 OAB | não rodada |  |  |  |  | sem: oab-h1-lc-4omini, oab-h1-bm25-4omini |
 | H2 OAB | não rodada |  |  |  |  | sem: oab-h2-lc-4omini, oab-h2-bm25-4omini |
 
-- H2 direta: 161 pergunta(s) de `direta-mcc-lc-4omini` e 0 de `direta-mcc-bm25-4omini` descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).
-- H2 direta, `exact_match` estrito (literal do README), nas mesmas 10 perguntas: contexto longo 0.0%, RAG BM25 0.0%.
+- H2 direta, `exact_match` estrito (literal do README), nas mesmas 500 perguntas: contexto longo 0.0%, RAG BM25 0.0%.
 
 ## Comparações secundárias
 
@@ -22,8 +21,8 @@ Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem vered
 
 | Comparação | n | Contexto longo | RAG | Diferença | Nota |
 |---|---|---|---|---|---|
-| H1 direta: contexto longo × embedding | 10 | 30.0% [0.0%; 60.0%] | 50.0% [20.0%; 80.0%] | +20.0 pp [+0.0; +50.0] | parcial (10 de 100) |
-| H2 direta: contexto longo × embedding | não rodada |  |  |  | sem: direta-mcc-emb-4omini |
+| H1 direta: contexto longo × embedding | 100 | 42.0% [32.0%; 52.0%] | 45.0% [35.0%; 55.0%] | +3.0 pp [-6.0; +13.0] |  |
+| H2 direta: contexto longo × embedding | 266 | 87.6% [83.5%; 91.4%] | 88.7% [85.0%; 92.5%] | +1.1 pp [-1.5; +4.1] | parcial (266 de 500) |
 | H1 OAB, GPT-4o-mini: contexto longo × embedding | não rodada |  |  |  | sem: oab-h1-lc-4omini, oab-h1-emb-4omini |
 | H1 OAB, Haiku: contexto longo × BM25 | não rodada |  |  |  | sem: oab-h1-lc-haiku, oab-h1-bm25-haiku |
 | H1 OAB, Haiku: contexto longo × embedding | não rodada |  |  |  | sem: oab-h1-lc-haiku, oab-h1-emb-haiku |
@@ -31,7 +30,7 @@ Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem vered
 | H2 OAB, Haiku: contexto longo × BM25 | não rodada |  |  |  | sem: oab-h2-lc-haiku, oab-h2-bm25-haiku |
 | H2 OAB, Haiku: contexto longo × embedding | não rodada |  |  |  | sem: oab-h2-lc-haiku, oab-h2-emb-haiku |
 
-- H1 direta: contexto longo × embedding: 90 pergunta(s) de `direta-mhqa-lc-4omini` e 0 de `direta-mhqa-emb-4omini` descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).
+- H2 direta: contexto longo × embedding: 234 pergunta(s) de `direta-mcc-lc-4omini` e 0 de `direta-mcc-emb-4omini` descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).
 
 ## Reprodução (etapa direta)
 
@@ -42,19 +41,24 @@ Número do artigo (em %) contra a nossa acurácia com IC de 95% (bootstrap). Rep
 | direta-mhqa-lc-4omini | ruler_qa2_421K | 100 | 42.0% [32.0%; 52.0%] | 43.0% | sim |  |  |
 | direta-mhqa-bm25-4omini | ruler_qa2_421K | 100 | 56.0% [46.0%; 66.0%] | 56.0% | sim |  |  |
 | direta-mcc-lc-4omini | icl_banking77_5900shot_balance | 100 | 89.0% [83.0%; 95.0%] | 93.0% | sim | 0.0% [0.0%; 0.0%] |  |
-| direta-mcc-lc-4omini | icl_clinic150_7050shot_balance | 71 | 85.9% [77.5%; 93.0%] | 93.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (70 de 100) |
-| direta-mcc-lc-4omini | icl_nlu_8296shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-lc-4omini | icl_trec_coarse_6600shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-lc-4omini | icl_trec_fine_6400shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-lc-4omini | média MCC | 171 | 87.7% [82.5%; 92.4%] | 82.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (170 de 500) |
-| direta-mcc-bm25-4omini | icl_banking77_5900shot_balance | 10 | 80.0% [50.0%; 100.0%] | 89.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (10 de 100) |
-| direta-mcc-bm25-4omini | icl_clinic150_7050shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | icl_nlu_8296shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | icl_trec_coarse_6600shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | icl_trec_fine_6400shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | média MCC | 10 | 80.0% [50.0%; 100.0%] | 75.4% | sem teste | 0.0% [0.0%; 0.0%] | parcial (10 de 500) |
-| direta-mhqa-emb-4omini | ruler_qa2_421K | 10 | 50.0% [20.0%; 80.0%] | 44.0% | sem teste |  | parcial (10 de 100) |
-| direta-mcc-emb-4omini | não rodada |  |  |  |  |  |  |
+| direta-mcc-lc-4omini | icl_clinic150_7050shot_balance | 100 | 88.0% [81.0%; 94.0%] | 93.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | icl_nlu_8296shot_balance | 100 | 84.0% [77.0%; 91.0%] | 87.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | icl_trec_coarse_6600shot_balance | 100 | 68.0% [59.0%; 77.0%] | 73.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | icl_trec_fine_6400shot_balance | 100 | 56.0% [46.0%; 65.0%] | 66.0% | não | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | média MCC | 500 | 77.0% [73.4%; 80.4%] | 82.0% | não | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_banking77_5900shot_balance | 100 | 92.0% [86.0%; 97.0%] | 89.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_clinic150_7050shot_balance | 100 | 87.0% [80.0%; 93.0%] | 89.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_nlu_8296shot_balance | 100 | 83.0% [75.0%; 90.0%] | 84.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_trec_coarse_6600shot_balance | 100 | 70.0% [61.0%; 79.0%] | 62.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_trec_fine_6400shot_balance | 100 | 52.0% [42.0%; 62.0%] | 53.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | média MCC | 500 | 76.8% [73.4%; 80.2%] | 75.4% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mhqa-emb-4omini | ruler_qa2_421K | 100 | 45.0% [35.0%; 55.0%] | 44.0% | sim |  |  |
+| direta-mcc-emb-4omini | icl_banking77_5900shot_balance | 100 | 91.0% [85.0%; 96.0%] | 88.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-emb-4omini | icl_clinic150_7050shot_balance | 100 | 89.0% [82.0%; 95.0%] | 89.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-emb-4omini | icl_nlu_8296shot_balance | 66 | 84.8% [75.8%; 92.4%] | 83.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (66 de 100) |
+| direta-mcc-emb-4omini | icl_trec_coarse_6600shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
+| direta-mcc-emb-4omini | icl_trec_fine_6400shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
+| direta-mcc-emb-4omini | média MCC | 266 | 88.7% [85.0%; 92.5%] | 70.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (266 de 500) |
 
 ## Secundárias
 
@@ -62,7 +66,8 @@ Acurácia com IC de 95%, sem veredito. As configurações diretas têm a compara
 
 | Configuração | n | Acurácia | Nota |
 |---|---|---|---|
-| direta-mhqa-emb-4omini | 10 | 50.0% [20.0%; 80.0%] | parcial (10 de 100) |
+| direta-mhqa-emb-4omini | 100 | 45.0% [35.0%; 55.0%] |  |
+| direta-mcc-emb-4omini | 266 | 88.7% [85.0%; 92.5%] | parcial (266 de 500) |
 
 ## Custos
 
@@ -72,8 +77,9 @@ Por configuração. Erros de API e recusas/respostas vazias são contados à par
 |---|---|---|---|---|---|---|---|---|
 | direta-mhqa-lc-4omini | 100 | 12,402,749 | 96.9% | 986 | 0.9596 | 0 | 0 |  |
 | direta-mhqa-bm25-4omini | 100 | 553,947 | 0.0% | 1,136 | 0.0838 | 0 | 0 |  |
-| direta-mcc-lc-4omini | 171 | 18,186,236 | 96.9% | 680 | 1.4062 | 1 | 0 | parcial (170 de 500) |
-| direta-mcc-bm25-4omini | 10 | 414,375 | 12.9% | 40 | 0.0582 | 0 | 0 | parcial (10 de 500) |
-| direta-mhqa-emb-4omini | 10 | 54,743 | 0.0% | 147 | 0.0083 | 0 | 0 | parcial (10 de 100) |
+| direta-mcc-lc-4omini | 500 | 53,259,848 | 97.2% | 2,000 | 4.1068 | 0 | 0 |  |
+| direta-mcc-bm25-4omini | 500 | 21,131,867 | 26.7% | 2,000 | 2.7480 | 0 | 0 |  |
+| direta-mhqa-emb-4omini | 100 | 553,033 | 0.0% | 1,568 | 0.0839 | 0 | 0 |  |
+| direta-mcc-emb-4omini | 266 | 9,016,322 | 12.8% | 1,064 | 1.2667 | 0 | 0 | parcial (266 de 500) |
 
 A coluna US$ soma o `custo_usd` das linhas, que não inclui os embeddings (centavos, só no livro-caixa). As configurações de embedding com o Haiku de leitor também gastaram na OpenAI, nos embeddings, e esse gasto não aparece aqui.
