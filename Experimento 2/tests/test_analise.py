@@ -350,3 +350,33 @@ def test_main_nao_morre_com_caractere_fora_do_cp1252(tmp_path, monkeypatch):
     assert main([str(tmp_path / "nao-existe-✓")]) == 2
     erros.flush()
     assert b"nao-existe-\\u2713" in erros.buffer.getvalue()
+
+
+def test_secundarias_pareadas_haiku_h1_sem_veredito(tmp_path):
+    # LC 60%, BM25 50% (100 perguntas): diferença RAG − LC = −10 pp
+    _gravar(tmp_path, "oab-h1-lc-haiku", "oab_h1", [True] * 60 + [False] * 40)
+    _gravar(tmp_path, "oab-h1-bm25-haiku", "oab_h1", [True] * 50 + [False] * 50)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
+    assert md.index("## Primárias") < md.index("## Comparações secundárias") < md.index("## Reprodução")
+    linhas = _linhas_da_secao(md, "Comparações secundárias")
+    assert len(linhas) == 8  # as oito comparações, na ordem do desenho
+    por = {c[0]: c for c in linhas}
+    c = por["H1 OAB, Haiku: contexto longo × BM25"]
+    assert c[1] == "100" and c[2].startswith("60.0%") and c[3].startswith("50.0%")
+    assert c[4].startswith("-10.0 pp") and c[5] == ""
+    assert por["H1 OAB, Haiku: contexto longo × embedding"][1] == NAO_RODADA
+    assert len(c) == 6  # sem coluna de veredito
+    bloco = md.split("## Comparações secundárias")[1].split("\n## ")[0]
+    for palavra in ("confirmada", "contrariada", "inconclusiva"):
+        assert palavra not in bloco
+    assert "sem veredito" in bloco
+
+
+def test_secundaria_pareada_parcial_e_mcc_flexivel(tmp_path):
+    for f in MCC_FONTES:
+        _gravar(tmp_path, "direta-mcc-lc-4omini", f, [False] * 10, flexiveis=[True] * 8 + [False] * 2)
+        _gravar(tmp_path, "direta-mcc-emb-4omini", f, [False] * 10, flexiveis=[True] * 6 + [False] * 4)
+    md = gerar_relatorio(tmp_path, _esperadas({f: 20 for f in MCC_FONTES}))
+    c = {x[0]: x for x in _linhas_da_secao(md, "Comparações secundárias")}["H2 direta: contexto longo × embedding"]
+    assert c[1] == str(10 * len(MCC_FONTES)) and c[2].startswith("80.0%") and c[3].startswith("60.0%")
+    assert c[4].startswith("-20.0 pp") and c[5] == f"parcial ({10 * len(MCC_FONTES)} de {20 * len(MCC_FONTES)})"

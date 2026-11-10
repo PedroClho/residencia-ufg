@@ -189,38 +189,54 @@ def _tabela(cabecalho: list[str], linhas: list[list[str]]) -> list[str]:
 
 # ---------------------------------------------------------------- seções
 
+def _comparar(titulo: str, nome_lc: str, nome_rag: str, sentido: int | None, dados, esp):
+    """Linhas pareadas contexto longo × RAG, o caminho comum das primárias e das secundárias. Devolve
+    `(linha, notas)`; `sentido` `None` = sem veredito (a linha sai sem a coluna do veredito)."""
+    def monta(*celulas, ver=""):
+        celulas = list(celulas)
+        if sentido is not None:
+            celulas.insert(5, ver)
+        return celulas
+
+    if nome_lc not in dados or nome_rag not in dados:
+        ausentes = [n for n in (nome_lc, nome_rag) if n not in dados]
+        return monta(titulo, NAO_RODADA, "", "", "", f"sem: {', '.join(ausentes)}"), []
+    lc, rag = _por_pergunta(dados[nome_lc]), _por_pergunta(dados[nome_rag])
+    esperadas = set(esp[nome_lc]) & set(esp[nome_rag])
+    respondidas = _respondidas(dados[nome_lc]) & _respondidas(dados[nome_rag]) & esperadas
+    nota = _parcial(len(respondidas), len(esperadas))
+    ids = sorted(set(lc) & set(rag) & esperadas)
+    if not ids:
+        return monta(titulo, "0", "", "", "", nota or "sem perguntas em comum", ver="sem veredito"), []
+    a = [_acerto(lc[i]) for i in ids]  # contexto longo
+    b = [_acerto(rag[i]) for i in ids]  # RAG
+    mcc = lc[ids[0]]["fonte"] in MCC_FONTES
+    estratos = [lc[i]["fonte"] for i in ids] if mcc else None
+    # Diferença média(RAG) − média(LC). Na H2 o artigo diz LC > RAG, ou seja, diferença negativa.
+    d, li, ls = bootstrap_pareado(a, b, estratos)
+    _, la, sa = intervalo_acuracia(a, estratos=estratos)
+    _, lb, sb = intervalo_acuracia(b, estratos=estratos)
+    ver = "" if sentido is None else ("sem veredito" if nota else veredito(li, ls, sentido))
+    linha = monta(titulo, str(len(ids)), _ic(np.mean(a), la, sa), _ic(np.mean(b), lb, sb),
+                  _ic_dif(d, li, ls), nota, ver=ver)
+    notas = []
+    fora_lc, fora_rag = len(lc) - len(ids), len(rag) - len(ids)
+    if fora_lc or fora_rag:
+        notas.append(f"- {titulo}: {fora_lc} pergunta(s) de `{nome_lc}` e {fora_rag} de `{nome_rag}` "
+                     f"descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).")
+    if sentido is not None and titulo == "H2 direta":
+        ea, eb = (np.mean([_acerto_estrito(x[i]) for i in ids]) for x in (lc, rag))
+        notas.append(f"- H2 direta, `exact_match` estrito (literal do README), nas mesmas {len(ids)} perguntas: "
+                     f"contexto longo {_pct(ea)}, RAG BM25 {_pct(eb)}.")
+    return linha, notas
+
+
 def _secao_primarias(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] | None]) -> list[str]:
     linhas, notas = [], []
     for titulo, nome_lc, nome_rag, sentido in PRIMARIAS:
-        if nome_lc not in dados or nome_rag not in dados:
-            ausentes = [n for n in (nome_lc, nome_rag) if n not in dados]
-            linhas.append([titulo, NAO_RODADA, "", "", "", "", f"sem: {', '.join(ausentes)}"])
-            continue
-        lc, rag = _por_pergunta(dados[nome_lc]), _por_pergunta(dados[nome_rag])
-        esperadas = set(esp[nome_lc]) & set(esp[nome_rag])
-        respondidas = _respondidas(dados[nome_lc]) & _respondidas(dados[nome_rag]) & esperadas
-        nota = _parcial(len(respondidas), len(esperadas))
-        ids = sorted(set(lc) & set(rag) & esperadas)
-        if not ids:
-            linhas.append([titulo, "0", "", "", "", "sem veredito", nota or "sem perguntas em comum"])
-            continue
-        a = [_acerto(lc[i]) for i in ids]  # contexto longo
-        b = [_acerto(rag[i]) for i in ids]  # RAG
-        estratos = [lc[i]["fonte"] for i in ids] if titulo == "H2 direta" else None
-        # Diferença média(RAG) − média(LC). Na H2 o artigo diz LC > RAG, ou seja, diferença negativa.
-        d, li, ls = bootstrap_pareado(a, b, estratos)
-        _, la, sa = intervalo_acuracia(a, estratos=estratos)
-        _, lb, sb = intervalo_acuracia(b, estratos=estratos)
-        linhas.append([titulo, str(len(ids)), _ic(np.mean(a), la, sa), _ic(np.mean(b), lb, sb),
-                       _ic_dif(d, li, ls), "sem veredito" if nota else veredito(li, ls, sentido), nota])
-        fora_lc, fora_rag = len(lc) - len(ids), len(rag) - len(ids)
-        if fora_lc or fora_rag:
-            notas.append(f"- {titulo}: {fora_lc} pergunta(s) de `{nome_lc}` e {fora_rag} de `{nome_rag}` "
-                         f"descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).")
-        if titulo == "H2 direta":
-            ea, eb = (np.mean([_acerto_estrito(x[i]) for i in ids]) for x in (lc, rag))
-            notas.append(f"- H2 direta, `exact_match` estrito (literal do README), nas mesmas {len(ids)} perguntas: "
-                         f"contexto longo {_pct(ea)}, RAG BM25 {_pct(eb)}.")
+        linha, n = _comparar(titulo, nome_lc, nome_rag, sentido, dados, esp)
+        linhas.append(linha)
+        notas += n
     out = ["## Primárias", "",
            "Contexto longo × RAG BM25, GPT-4o-mini, perguntas pareadas por `pergunta_id`. Diferença = "
            "RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (IC de 95%); linhas com erro "
@@ -233,6 +249,37 @@ def _secao_primarias(dados: dict[str, list[dict]], esp: dict[str, dict[str, str]
            "reprodução.",
            ""]
     out += _tabela(["Comparação", "n", "Contexto longo", "RAG BM25", "Diferença", "Veredito", "Nota"], linhas)
+    if notas:
+        out += [""] + notas
+    return out + [""]
+
+
+SECUNDARIAS_PAREADAS = [
+    ("H1 direta: contexto longo × embedding", "direta-mhqa-lc-4omini", "direta-mhqa-emb-4omini"),
+    ("H2 direta: contexto longo × embedding", "direta-mcc-lc-4omini", "direta-mcc-emb-4omini"),
+    ("H1 OAB, GPT-4o-mini: contexto longo × embedding", "oab-h1-lc-4omini", "oab-h1-emb-4omini"),
+    ("H1 OAB, Haiku: contexto longo × BM25", "oab-h1-lc-haiku", "oab-h1-bm25-haiku"),
+    ("H1 OAB, Haiku: contexto longo × embedding", "oab-h1-lc-haiku", "oab-h1-emb-haiku"),
+    ("H2 OAB, GPT-4o-mini: contexto longo × embedding", "oab-h2-lc-4omini", "oab-h2-emb-4omini"),
+    ("H2 OAB, Haiku: contexto longo × BM25", "oab-h2-lc-haiku", "oab-h2-bm25-haiku"),
+    ("H2 OAB, Haiku: contexto longo × embedding", "oab-h2-lc-haiku", "oab-h2-emb-haiku"),
+]
+# (título, contexto longo, RAG): os mesmos pares do desenho, reportados com intervalo e sem veredito.
+
+
+def _secao_pareadas(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] | None]) -> list[str]:
+    linhas, notas = [], []
+    for titulo, nome_lc, nome_rag in SECUNDARIAS_PAREADAS:
+        linha, n = _comparar(titulo, nome_lc, nome_rag, None, dados, esp)
+        linhas.append(linha)
+        notas += n
+    out = ["## Comparações secundárias", "",
+           "Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem veredito: só a diferença "
+           "com IC de 95%. Diferença = RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (nas "
+           "MCC, estratificado por dataset); linhas com erro contam como erradas e nas MCC a acurácia é a "
+           "leitura flexível de `label:`. Comparação com resposta final faltando sai \"parcial (x de N)\"; par "
+           "sem nenhuma configuração na pasta sai \"não rodada\".", ""]
+    out += _tabela(["Comparação", "n", "Contexto longo", "RAG", "Diferença", "Nota"], linhas)
     if notas:
         out += [""] + notas
     return out + [""]
@@ -346,7 +393,7 @@ def gerar_relatorio(pasta: Path, esperadas=None) -> str:
     esperadas = esperadas or esperadas_do_conjunto()
     esp = {n: esperadas(_POR_NOME[n]) if n in _POR_NOME else None for n in dados}
     linhas = [f"# Resultados: {pasta.name}", ""]
-    for secao in (_secao_primarias, _secao_reproducao, _secao_secundarias, _secao_custos):
+    for secao in (_secao_primarias, _secao_pareadas, _secao_reproducao, _secao_secundarias, _secao_custos):
         linhas += secao(dados, esp)
     md = "\n".join(linhas)
     (pasta / "tabela.md").write_text(md, encoding="utf-8")
