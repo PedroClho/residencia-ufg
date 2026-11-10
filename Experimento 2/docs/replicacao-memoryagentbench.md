@@ -2,8 +2,6 @@
 
 **Residência em IA (UFG) · Experimento 2 · Pedro Coelho**
 
-**Versão parcial, de 2026-11-10.** A OpenAI ficou sem saldo pré-pago no meio da execução. Tudo o que depende do GPT-4o-mini e ainda não rodou está marcado como **pendente**, e a seção 9 lista os comandos que completam o experimento.
-
 O Experimento 1 comparou memória passiva e ativa numa conversa sintética pequena, em que o contexto longo bastava. O Experimento 2 testa duas afirmações de um artigo revisado por pares, o MemoryAgentBench (Hu, Wang e McAuley, ICLR 2026), para saber se o autor estava certo:
 
 - **H1.** O RAG vence o contexto longo quando é preciso achar um trecho preciso (achado 1 do artigo, §4.2).
@@ -13,34 +11,39 @@ Cada afirmação passa por duas etapas. A **direta** usa o código, os dados e o
 
 - Desenho, com as regras de decisão: [`superpowers/specs/2026-11-10-replicacao-memoryagentbench-design.md`](superpowers/specs/2026-11-10-replicacao-memoryagentbench-design.md)
 - Código do autor e cada adaptação: [`../replica/autor/NOTICE.md`](../replica/autor/NOTICE.md)
-- Resultados: [`../resultados/20261110-direta/tabela.md`](../resultados/20261110-direta/tabela.md), [`../resultados/20261110-oab/tabela.md`](../resultados/20261110-oab/tabela.md) e o piloto em [`../resultados/piloto-20261110/`](../resultados/piloto-20261110/)
+- Resultados: [`../resultados/20261110-direta/tabela.md`](../resultados/20261110-direta/tabela.md), [`../resultados/20261110-oab/tabela.md`](../resultados/20261110-oab/tabela.md), a repetição da janela de depuração em [`../resultados/20261110-depuracao/`](../resultados/20261110-depuracao/) e o piloto em [`../resultados/piloto-20261110/`](../resultados/piloto-20261110/)
 
-**O resultado em poucas linhas.** A H1 direta está completa e foi **confirmada**: no MH-Doc QA, com o GPT-4o-mini, o RAG BM25 acertou 56,0% [46,0; 66,0] e o contexto longo 42,0% [32,0; 52,0], e a diferença pareada, +14,0 pp [+2,0; +26,0], exclui zero na direção do artigo. Os dois números também **reproduzem** o artigo: 43,0 e 56,0 caem dentro dos nossos intervalos. As outras três comparações primárias estão **pendentes**. A API da OpenAI passou a recusar as chamadas por falta de saldo pré-pago (HTTP 429, "You have no credits remaining") com US$ 3,29 gastos, bem abaixo da trava de US$ 20 do painel, e a rodada foi interrompida sem perder nenhuma resposta paga. Da H2 direta há só uma parte: o contexto longo reproduz o artigo no BANKING77 (89,0% [83,0; 95,0] contra 93,0), mas o BM25 tem 10 das 500 perguntas, e não há veredito. As duas primárias da OAB usam o GPT-4o-mini e não rodaram. Na OAB rodaram as linhas de base sem memória (GPT-4o-mini 58,9%, Haiku 70,7%, nas 3.377 questões) e as secundárias do Haiku, que não dão veredito. Nelas, o BM25 e o contexto longo ficaram a menos de 3 pontos um do outro, com intervalos que contêm zero nas duas afirmações (BM25 − contexto longo: H1 +0,7 pp [−2,7; +4,0]; H2 −2,7 pp [−7,6; +2,2]), e o contexto longo custou de 6,6 a 14 vezes mais. Em comparações exploratórias, que o desenho não registrou, a memória somou de +1,3 a +5,0 pp a um Haiku que, sem memória, já acerta 69,3% e 69,2% dessas questões (a maior estimativa é +5,0 pp, com intervalo até +10,0). Nas mesmas questões, o Haiku sem memória acerta mais que o GPT-4o-mini sem memória: +15,0 pp [+9,7; +20,3] na amostra da H1 e +5,4 pp [−0,9; +11,6] no teste da H2. Os braços com memória do GPT-4o-mini estão pendentes, então ainda não dá para comparar a troca de modelo com a memória.
+**O resultado em poucas linhas.** As quatro comparações primárias usam o GPT-4o-mini e o par contexto longo × RAG BM25. Duas confirmam o artigo, duas são inconclusivas, e nenhuma o contraria. A diferença é sempre RAG − contexto longo, com o intervalo de 95%:
+
+- **H1 direta: confirmada e reproduzida.** No MH-Doc QA, o BM25 acertou 56,0% [46,0; 66,0] e o contexto longo 42,0% [32,0; 52,0], +14,0 pp [+2,0; +26,0]. Os números do artigo, 56,0 e 43,0, caem nos nossos intervalos.
+- **H2 direta: inconclusiva.** Nas cinco MCC (500 perguntas), o contexto longo acertou 77,0% [73,4; 80,4] e o BM25 76,8% [73,4; 80,2], −0,2 pp [−2,8; +2,4]. O BM25 reproduz o artigo (75,4). A média do contexto longo **não reproduz**: os 82,0 da Tabela 3 do artigo e os 82,4 da média da Tabela 7 ficam acima do intervalo.
+- **H1 OAB: confirmada.** Com a lei da matéria como memória, em 300 questões, o BM25 acertou 64,0% [58,3; 69,3] e o contexto longo 58,7% [53,0; 64,3], +5,3 pp [+1,7; +9,0].
+- **H2 OAB: inconclusiva.** Com as provas antigas como exemplos, em 224 questões, o BM25 acertou 66,1% [59,8; 72,3] e o contexto longo 65,2% [58,9; 71,4], +0,9 pp [−3,6; +5,4].
+
+A não reprodução da média do contexto longo nas MCC abriu a janela de depuração da etapa direta, que fechou no mesmo dia. O nosso código manda ao modelo a mesma requisição que o código do autor mandaria, e uma repetição paga do TREC fine (52 de 100, contra 56 na rodada) mostrou que o ruído da temperatura não explica a distância. Sobram duas explicações que não dá para separar: o GPT-4o-mini servido hoje e os dados com que o artigo rodou as MCC. Na OAB, o contexto longo custou de 1,5 a 14,2 vezes mais que o BM25. Ficou incompleta só a reprodução das MCC por embedding, que parou no teto de gasto com 266 de 500 perguntas.
 
 ## 1. O que foi replicado e o que não foi
 
-Situação de cada comparação em 2026-11-10:
+Situação de cada comparação ao fim das rodadas, em 2026-11-10:
 
 | Comparação | Configurações | Perguntas | Situação |
 |---|---|---|---|
-| H1 direta (primária) | contexto longo × RAG BM25, GPT-4o-mini, MH-Doc QA | 100 | **completa**, com veredito e teste de reprodução |
-| H2 direta (primária) | contexto longo × RAG BM25, GPT-4o-mini, as cinco MCC | 500 | parcial: contexto longo 170 de 500 (mais 1 erro de API a refazer), BM25 10 de 500. **Pendente** |
-| Reprodução do RAG por embedding no MH-QA | `text-embedding-3-small`, leitor GPT-4o-mini | 100 | 10 de 100. **Pendente** |
-| Reprodução do RAG por embedding nas MCC | idem | 500 | 0 de 500. **Pendente** (a última da fila) |
-| H1 OAB (primária) | contexto longo × RAG BM25, GPT-4o-mini | 300 | 0 de 300. **Pendente** |
-| H2 OAB (primária) | idem | 224 | 0 de 224. **Pendente** |
+| H1 direta (primária) | contexto longo × RAG BM25, GPT-4o-mini, MH-Doc QA | 100 | completa: **confirmada**; os dois braços reproduzem o artigo |
+| H2 direta (primária) | contexto longo × RAG BM25, GPT-4o-mini, as cinco MCC | 500 | completa: **inconclusiva**; o BM25 reproduz o artigo, a média do contexto longo não |
+| Reprodução do RAG por embedding no MH-QA | `text-embedding-3-small`, leitor GPT-4o-mini | 100 | completa: reproduz |
+| Reprodução do RAG por embedding nas MCC | idem | 500 | **incompleta**: parou no teto com 266 de 500 (BANKING77 e CLINC150 completos, NLU com 66 de 100, os dois TREC sem nenhuma); a média fica sem teste |
+| H1 OAB (primária) | contexto longo × RAG BM25, GPT-4o-mini | 300 | completa: **confirmada** |
+| H2 OAB (primária) | idem | 224 | completa: **inconclusiva** |
 | Linhas de base sem memória | GPT-4o-mini e Haiku 5.5 | 3.377 cada | completas |
-| Secundárias do Haiku | contexto longo e RAG BM25, na H1 e na H2 da OAB | 300 e 224 | completas |
-| Secundárias da OpenAI na OAB | RAG por embedding na H1 e na H2, ablação de k (2, 5 e 20), BM25 no corpus inteiro | 300 ou 224 | **pendentes** |
-| Haiku com RAG por embedding | H1 e H2 da OAB | 300 e 224 | **pendentes** (os embeddings vêm da OpenAI) |
+| Secundárias do Haiku | contexto longo, RAG BM25 e RAG por embedding, na H1 e na H2 da OAB | 300 e 224 | completas |
+| Secundárias da OpenAI na OAB | RAG por embedding na H1 e na H2, ablação de k (2, 5 e 20), BM25 no corpus inteiro | 300 ou 224 | completas |
+| Repetição da janela de depuração | contexto longo, GPT-4o-mini, TREC fine | 100 | completa (seção 5.2) |
 
-### Por que parou
+### A parada por falta de saldo
 
-A rodada da etapa direta começou pelas cinco configurações da OpenAI. Depois do MH-QA completo e de 170 perguntas das MCC no contexto longo, a API devolveu 429 com a mensagem "You have no credits remaining". O livro-caixa marcava US$ 3,29 (US$ 3,2867). O saldo pré-pago da conta acabou muito antes da trava de US$ 20 que o Pedro pôs no painel e do teto de US$ 19,50 do livro-caixa: a trava do painel limita o gasto, mas não garante que haja saldo. Cada resposta é gravada logo depois de chegar, e a retomada responde só o que falta e refaz as linhas com erro de API, então tudo o que foi pago está nos arquivos.
+A rodada da etapa direta parou depois do MH-QA completo e de 170 perguntas das MCC no contexto longo: a API da OpenAI devolveu 429 com a mensagem "You have no credits remaining", com US$ 3,29 no livro-caixa. O saldo pré-pago acabou muito antes da trava de US$ 20 do painel e do teto de US$ 19,50 do livro-caixa, que limitam o gasto mas não garantem que haja saldo. O cliente reconhecia a falta de saldo só pelo código `insufficient_quota`; desde `fff61c6`, reconhece também o texto da mensagem e para a configuração na hora (`LimiteDoPainel`). Enquanto a OpenAI estava sem crédito, rodaram as quatro configurações do Haiku que usam só a Anthropic (BM25 e contexto longo, na H1 e na H2). Os tetos são por provedor, e isso não tirou orçamento de nenhuma primária.
 
-O cliente do experimento reconhecia a falta de saldo pelo código `insufficient_quota`, e essa resposta não foi reconhecida; a rodada foi parada à mão. Desde o commit `fff61c6` ele reconhece também o texto da mensagem e para a configuração na hora (`LimiteDoPainel`), em vez de esperar 5 × 60 s por pergunta. Pôr crédito na conta é ação do Pedro.
-
-Enquanto a OpenAI estava sem crédito, rodaram as quatro configurações que usam só a Anthropic: o BM25 e o contexto longo do Haiku, na H1 e na H2. Os tetos são por provedor, então isso não tirou orçamento de nenhuma primária. A decisão foi do Claude (seção 6.2). A Anthropic fechou em US$ 18,33 dos US$ 29,50 do livro-caixa. As configurações do Haiku com RAG por embedding esperam, porque os embeddings vêm da OpenAI.
+O Pedro pôs US$ 17 de crédito na OpenAI por volta das 11:25. Um vigia, que fazia uma chamada de 1 token a cada 15 minutos pelo livro-caixa, viu o crédito às 11:31 e retomou sozinho, na ordem do plano e sem a reserva, o resto da etapa direta (11:31 a 12:17) e as quatro primárias da OAB (12:17 a 13:09). Depois, com a reserva, rodaram a repetição da janela de depuração (seção 5.2), as oito secundárias da OAB e, por último, a reprodução das MCC por embedding, até o teto. As decisões são do Claude (seção 6.2). Cada resposta é gravada logo que chega, e a retomada só responde o que falta e refaz as linhas com erro de API: nada do que foi pago se perdeu, e no fim nenhuma configuração ficou com erro de API, recusa ou resposta vazia. O livro-caixa fechou em US$ 19,4963 na OpenAI, no limite do teto de US$ 19,50, e em US$ 20,2306 na Anthropic, de um teto de US$ 29,50.
 
 ### O que ficou fora por desenho
 
@@ -48,7 +51,7 @@ Enquanto a OpenAI estava sem crédito, rodaram as quatro configurações que usa
 - **A metade "compreensão de longo alcance" do achado 2.** A tarefa de resumo depende do GPT-4o como juiz, e o Detective QA tem só 71 perguntas.
 - **O achado 3, esquecimento seletivo**, por decisão do Pedro. Na OAB também não haveria como testá-lo: o corpus não guarda versões de lei.
 - **Os agentes agênticos** (MemGPT, MIRIX, Self-RAG) **e os RAG com estrutura** (GraphRAG, HippoRAG, Mem0 e outros), pelo orçamento e porque as duas afirmações não dependem deles.
-- **As ablações do artigo** (tamanho de chunk e top-k), por decisão do Pedro. A única ablação do experimento é a de k na OAB H1, que está **pendente**.
+- **As ablações do artigo** (tamanho de chunk e top-k), por decisão do Pedro. A única ablação do experimento é a de k na OAB H1 (seção 4.2).
 
 ## 2. As regras de decisão, como foram registradas
 
@@ -74,6 +77,7 @@ A ordem dos commits mostra que a regra veio antes dos dados:
 | `dd3d6b2` | 06:34 | piloto e "Decisões do piloto" |
 | `6003a15` | 07:22 | rodada direta parcial e linhas de base da OAB |
 | `fc1b412` | 08:07 | rodada da OAB só com o Haiku |
+| `4929dc3` | 14:36 | resto da etapa direta, repetição do TREC fine e rodada da OAB com a OpenAI |
 
 A seção da regra tem o mesmo texto em `577fb2e` e na versão atual do desenho (conferido com `git diff`). Entre `6e8e707` e `577fb2e` mudou uma linha: a H2 direta passou de duas MCC para as cinco (Correção 7), porque nos dois datasets do desenho a diferença do artigo é de 4 pontos (93 × 89), que 200 perguntas não detectam com segurança; o Pedro aprovou. Depois do piloto houve uma decisão que muda como a H2 direta é medida, sem mexer na regra: a leitura flexível de `label:` como métrica das MCC (seção 5.2). Ela foi tomada pelo Claude, a partir do formato das respostas de 10 perguntas do piloto, antes da rodada completa.
 
@@ -91,7 +95,7 @@ O código dos três agentes (contexto longo, RAG BM25 e RAG por embedding), os t
 6. **Templates por uma função injetável**, para a OAB plugar os seus; o padrão é o `get_template` do autor.
 7. **Sem torch, transformers, LangChain, Azure nem gravação em `./outputs/`.** O trecho recuperado volta para o rodador, que o guarda na linha da resposta.
 
-Fora do código do autor, o cliente de embeddings fecha cada pedido em até 250 mil tokens estimados e trunca em 8.191 tokens (`cl100k_base`) qualquer trecho maior, com aviso, porque a API recusa acima disso; o modelo do autor é o mesmo, com o mesmo limite. Numa conferência feita para este documento, nenhum trecho da OAB nem do MH-QA passa desse limite: o maior da H1, com chunks de 512, tem 5.482 tokens (no CC), e o "artigo" de 12.841 tokens do CPC é quebrado em frases antes de virar trecho. Nas MCC, com chunks de 4096, 2 trechos passam (o maior tem 9.101 tokens); se entrarem no índice da reprodução das MCC por embedding, **pendente**, perdem a cauda.
+Fora do código do autor, o cliente de embeddings fecha cada pedido em até 250 mil tokens estimados e trunca em 8.191 tokens (`cl100k_base`) qualquer trecho maior, com aviso, porque a API recusa acima disso; o modelo do autor é o mesmo, com o mesmo limite. Numa conferência feita para este documento, nenhum trecho da OAB nem do MH-QA passa desse limite: o maior da H1, com chunks de 512, tem 5.482 tokens (no CC), e o "artigo" de 12.841 tokens do CPC é quebrado em frases antes de virar trecho. Nas MCC, com chunks de 4096, 2 trechos passam. Na reprodução das MCC por embedding, o log avisou o truncamento dos dois, e o embedding de cada um foi calculado sem a cauda.
 
 Nas métricas, o `calculate_metrics` deixou de calcular o ROUGE, que o experimento não usa, e o `post_process` ficou só com os ramos das tarefas usadas. Foram mantidos de propósito os comportamentos do autor que um leitor estranharia: o carimbo de hora no template de memorização, o truncamento do contexto longo a cada pergunta, o descarte do trecho mais antigo no RAG quando a memória passa do limite, e o trecho vazio que o fatiador pode gerar.
 
@@ -110,7 +114,7 @@ Nas métricas, o `calculate_metrics` deixou de calcular o ROUGE, que o experimen
 
 O cache é o contrário da regra do Experimento 1, que o proibiu para a contagem de tokens ter um significado só. Aqui ele é obrigatório: sem cache, a Anthropic passaria de US$ 140. No piloto, as chamadas 2 a 10 das seis configurações de contexto longo vieram com 99% a 100% da entrada cacheada.
 
-**Contexto longo não é contexto inteiro.** O agente de contexto longo do autor trunca a memória para caber em `input_length_limit − buffer_length` e guarda o fim. Com o GPT-4o-mini, isso dá uns 124 mil tokens: no MH-QA, cujo contexto tem ~421 mil, ele vê menos de um terço. As 100 perguntas do contexto longo somaram 12.402.749 tokens de entrada, ~124 mil por pergunta. O RAG BM25 indexa tudo. É o protocolo do artigo, e pesa na leitura da H1 (seção 5.1).
+**Contexto longo não é contexto inteiro.** O agente de contexto longo do autor trunca a memória para caber em `input_length_limit − buffer_length` e guarda o fim. Com o GPT-4o-mini, isso dá uns 124 mil tokens: no MH-QA, cujo contexto tem ~421 mil, ele vê menos de um terço. As 100 perguntas do contexto longo somaram 12.402.749 tokens de entrada, ~124 mil por pergunta. O RAG BM25 indexa tudo. É o protocolo do artigo, e pesa na leitura da H1 (seções 5.1 e 5.3). Nas MCC, a entrada do contexto longo tem ~104 a 107 mil tokens e cabe inteira.
 
 ### 3.3 Adaptações para a OAB
 
@@ -130,8 +134,8 @@ INSTRUCAO_LETRA = "Responda apenas com a letra da alternativa correta (A, B, C o
 - **A consulta do RAG.** Na H1, a consulta é o texto depois de "Agora responda à questão:", isto é, o enunciado com as alternativas. Na H2, como nas MCC do autor, nenhum padrão casa, e a consulta é a mensagem inteira.
 - **Resposta por letra.** A letra é extraída por regex, e letra inválida conta como erro. No piloto, nenhuma configuração teve letra inválida.
 - **Haiku sem raciocínio** (`thinking: {type: "disabled"}`), para ficar comparável ao GPT-4o-mini, que não raciocina.
-- **H1: a lei da matéria.** 300 questões das provas de 2018 a 2023, sorteadas (semente 42) e estratificadas pela matéria reclassificada (seção 3.5), sem Filosofia e Internacional. Cada matéria aponta para uma ou mais leis (Civil → CC, Processo Civil → CPC, Ética → EAOAB, Regulamento Geral e CED, e assim por diante), o que dá 15 contextos; o maior tem 264.994 tokens `o200k` (o CPC). O contexto longo e o RAG recebem a mesma lei e diferem só em como a leem, que é o ponto do artigo. O contexto longo do Haiku vê cada lei inteira. O do GPT-4o-mini verá só o fim dos 7 contextos que passam de ~124 mil tokens: CPC (264.994), CC (168.882), o bloco de Administrativo (166.678), CF (166.086), CLT (144.456), o bloco de Empresarial, com as Leis 6.404 e 11.101 (138.613), e o bloco de Eleitoral (136.996). Esses 7 contextos têm 159 das 300 questões; os outros 8 cabem inteiros.
-- **H1, variante "corpus inteiro":** o BM25 sobre todas as leis (1.755.201 tokens `o200k`), só com BM25, porque o agente de embedding do autor guardaria só os últimos ~285 mil tokens (Correção 9). **Pendente.**
+- **H1: a lei da matéria.** 300 questões das provas de 2018 a 2023, sorteadas (semente 42) e estratificadas pela matéria reclassificada (seção 3.5), sem Filosofia e Internacional. Cada matéria aponta para uma ou mais leis (Civil → CC, Processo Civil → CPC, Ética → EAOAB, Regulamento Geral e CED, e assim por diante), o que dá 15 contextos; o maior tem 264.994 tokens `o200k` (o CPC). O contexto longo e o RAG recebem a mesma lei e diferem só em como a leem, que é o ponto do artigo. O contexto longo do Haiku vê cada lei inteira. O do GPT-4o-mini vê só o fim dos 7 contextos que passam de ~124 mil tokens: CPC (264.994), CC (168.882), o bloco de Administrativo (166.678), CF (166.086), CLT (144.456), o bloco de Empresarial, com as Leis 6.404 e 11.101 (138.613), e o bloco de Eleitoral (136.996). Esses 7 contextos têm 159 das 300 questões; os outros 8 cabem inteiros.
+- **H1, variante "corpus inteiro":** o BM25 sobre todas as leis (1.755.201 tokens `o200k`), só com BM25, porque o agente de embedding do autor guardaria só os últimos ~285 mil tokens (Correção 9).
 - **H2: as provas antigas como exemplos.** A memória são 3.057 questões de até 2023, em ordem cronológica, cada uma seguida de "Gabarito: X" (775.322 tokens `o200k`). O teste são as 224 questões de 2024 e 2025 (229 antes dos filtros), depois do corte de treino do GPT-4o-mini (outubro de 2023, segundo fontes secundárias). Sai da memória toda questão antiga com enunciado quase igual ao de uma questão de teste (razão do `SequenceMatcher` acima de 0,8), e saem as duplicatas conhecidas (prova 2018-01 ≈ 2018-25, `2022-02-3` e `2022-02-3-fixed`). O contexto longo vê as questões mais recentes que cabem: no Haiku, ~520 mil tokens `o200k` (~890 mil do tokenizador dele), cerca de dois terços da memória; no GPT-4o-mini, ~124 mil, cerca de um sexto. O RAG usa chunks de 4096 tokens, e cada busca traz ~160 questões antigas (~41 mil tokens).
 - **BM25 em português com a tokenização do autor.** O `str.split()` não passa o texto para minúsculas e deixa a pontuação grudada na palavra: "Lei", "lei" e "lei," são termos diferentes, e não há stemmer. O desenho (§5) sugeria um stemmer de português e deixava a escolha para quem construísse (§12); o plano manteve a tokenização do autor, por fidelidade. Isso pode prejudicar o RAG na OAB (seção 5.4).
 - **Linhas de base sem memória:** as 3.377 questões válidas de todos os anos (as 3.395 do banco menos 18 com menos de quatro alternativas), nos dois modelos.
@@ -158,27 +162,31 @@ Restaram 65 das 953 questões (6,8%) com matéria fora do bloco da FGV, nenhuma 
 
 As comparações são pareadas por `pergunta_id`. A diferença é sempre RAG − contexto longo: a H1 espera diferença positiva, a H2 negativa. O intervalo de 95% vem de um bootstrap pareado com 10.000 reamostragens, que nas MCC reamostra dentro de cada dataset. Linhas com erro contam como erradas. Configuração em que falta resposta final para alguma pergunta esperada fica "parcial" e sem veredito nem teste de reprodução.
 
-O comando `analise` gera as primárias, com veredito; as comparações secundárias contexto longo × RAG registradas no desenho (embedding ou BM25), com intervalo e sem veredito, na seção "Comparações secundárias" da `tabela.md`; a reprodução; as acurácias; os custos; e o gráfico. Os pares do Haiku contexto longo × BM25 citados aqui saem dessa seção. Ficam fora da `tabela.md` só os pares **exploratórios, não registrados** no desenho: memória × sem memória, e GPT-4o-mini × Haiku sem memória. Eles foram calculados à parte com a mesma função (`replica.analise.bootstrap_pareado`, semente 42, 10.000 reamostragens), pareando por `pergunta_id` a resposta final de cada pergunta em cada JSONL, com a linha de base restrita às questões da H1 ou do teste da H2.
+O comando `analise` gera as primárias, com veredito; as comparações secundárias contexto longo × RAG registradas no desenho (embedding ou BM25), com intervalo e sem veredito, na seção "Comparações secundárias" da `tabela.md`; a reprodução; as acurácias; os custos; e o gráfico. Ficam fora da `tabela.md` só as comparações **exploratórias, não registradas** no desenho: memória × sem memória, nos dois modelos; GPT-4o-mini × Haiku sem memória; o Haiku sem memória contra os braços com memória do GPT-4o-mini; e, na H1 da OAB, a primária separada entre os contextos que o GPT-4o-mini vê inteiros e os que ele vê só pelo fim. Os pares foram calculados à parte com a mesma função (`replica.analise.bootstrap_pareado`, semente 42, 10.000 reamostragens), pareando por `pergunta_id` a resposta final de cada pergunta em cada JSONL, com a linha de base restrita às questões da H1 ou do teste da H2. São muitas comparações, nenhuma com correção para multiplicidade: entre elas, um intervalo que exclui zero pode aparecer por acaso.
 
 ## 4. Resultados
 
 ### 4.1 Etapa direta
 
-Rodada em `resultados/20261110-direta/`. As linhas da H1 e da H2 direta da tabela de primárias, coladas de `tabela.md` sem edição (as linhas da OAB dessa tabela dizem "não rodada"):
+Rodada em `resultados/20261110-direta/`. As linhas da H1 e da H2 direta da tabela de primárias, coladas de `tabela.md` sem edição (as linhas da OAB dessa tabela dizem "não rodada", porque a OAB está na outra pasta):
 
 | Comparação | n | Contexto longo | RAG BM25 | Diferença | Veredito | Nota |
 |---|---|---|---|---|---|---|
 | H1 direta | 100 | 42.0% [32.0%; 52.0%] | 56.0% [46.0%; 66.0%] | +14.0 pp [+2.0; +26.0] | confirmada |  |
-| H2 direta | 10 | 60.0% [30.0%; 90.0%] | 80.0% [50.0%; 100.0%] | +20.0 pp [+0.0; +50.0] | sem veredito | parcial (10 de 500) |
+| H2 direta | 500 | 77.0% [73.4%; 80.4%] | 76.8% [73.4%; 80.2%] | -0.2 pp [-2.8; +2.4] | inconclusiva |  |
 
-- H2 direta: 161 pergunta(s) de `direta-mcc-lc-4omini` e 0 de `direta-mcc-bm25-4omini` descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).
-- H2 direta, `exact_match` estrito (literal do README), nas mesmas 10 perguntas: contexto longo 0.0%, RAG BM25 0.0%.
+- H2 direta, `exact_match` estrito (literal do README), nas mesmas 500 perguntas: contexto longo 0.0%, RAG BM25 0.0%.
 
-Das comparações secundárias registradas (contexto longo × embedding), só a do MH-QA tem dados, e são só as 10 perguntas do piloto; linha colada sem edição da seção "Comparações secundárias":
+As comparações secundárias registradas (contexto longo × embedding), coladas sem edição da seção "Comparações secundárias":
 
 | Comparação | n | Contexto longo | RAG | Diferença | Nota |
 |---|---|---|---|---|---|
-| H1 direta: contexto longo × embedding | 10 | 30.0% [0.0%; 60.0%] | 50.0% [20.0%; 80.0%] | +20.0 pp [+0.0; +50.0] | parcial (10 de 100) |
+| H1 direta: contexto longo × embedding | 100 | 42.0% [32.0%; 52.0%] | 45.0% [35.0%; 55.0%] | +3.0 pp [-6.0; +13.0] |  |
+| H2 direta: contexto longo × embedding | 266 | 87.6% [83.5%; 91.4%] | 88.7% [85.0%; 92.5%] | +1.1 pp [-1.5; +4.1] | parcial (266 de 500) |
+
+- H2 direta: contexto longo × embedding: 234 pergunta(s) de `direta-mcc-lc-4omini` e 0 de `direta-mcc-emb-4omini` descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).
+
+A secundária da H2 é parcial: as 266 perguntas são as do BANKING77, do CLINC150 e de parte do NLU, sem os dois TREC, e por isso as acurácias dela não se comparam às das 500.
 
 A seção de reprodução, colada sem edição. Nas MCC, "Nossa acurácia" é a leitura flexível de `label:`, e a coluna do estrito é o `exact_match` literal do README:
 
@@ -187,19 +195,24 @@ A seção de reprodução, colada sem edição. Nas MCC, "Nossa acurácia" é a 
 | direta-mhqa-lc-4omini | ruler_qa2_421K | 100 | 42.0% [32.0%; 52.0%] | 43.0% | sim |  |  |
 | direta-mhqa-bm25-4omini | ruler_qa2_421K | 100 | 56.0% [46.0%; 66.0%] | 56.0% | sim |  |  |
 | direta-mcc-lc-4omini | icl_banking77_5900shot_balance | 100 | 89.0% [83.0%; 95.0%] | 93.0% | sim | 0.0% [0.0%; 0.0%] |  |
-| direta-mcc-lc-4omini | icl_clinic150_7050shot_balance | 71 | 85.9% [77.5%; 93.0%] | 93.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (70 de 100) |
-| direta-mcc-lc-4omini | icl_nlu_8296shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-lc-4omini | icl_trec_coarse_6600shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-lc-4omini | icl_trec_fine_6400shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-lc-4omini | média MCC | 171 | 87.7% [82.5%; 92.4%] | 82.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (170 de 500) |
-| direta-mcc-bm25-4omini | icl_banking77_5900shot_balance | 10 | 80.0% [50.0%; 100.0%] | 89.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (10 de 100) |
-| direta-mcc-bm25-4omini | icl_clinic150_7050shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | icl_nlu_8296shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | icl_trec_coarse_6600shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | icl_trec_fine_6400shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
-| direta-mcc-bm25-4omini | média MCC | 10 | 80.0% [50.0%; 100.0%] | 75.4% | sem teste | 0.0% [0.0%; 0.0%] | parcial (10 de 500) |
-| direta-mhqa-emb-4omini | ruler_qa2_421K | 10 | 50.0% [20.0%; 80.0%] | 44.0% | sem teste |  | parcial (10 de 100) |
-| direta-mcc-emb-4omini | não rodada |  |  |  |  |  |  |
+| direta-mcc-lc-4omini | icl_clinic150_7050shot_balance | 100 | 88.0% [81.0%; 94.0%] | 93.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | icl_nlu_8296shot_balance | 100 | 84.0% [77.0%; 91.0%] | 87.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | icl_trec_coarse_6600shot_balance | 100 | 68.0% [59.0%; 77.0%] | 73.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | icl_trec_fine_6400shot_balance | 100 | 56.0% [46.0%; 65.0%] | 66.0% | não | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-lc-4omini | média MCC | 500 | 77.0% [73.4%; 80.4%] | 82.0% | não | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_banking77_5900shot_balance | 100 | 92.0% [86.0%; 97.0%] | 89.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_clinic150_7050shot_balance | 100 | 87.0% [80.0%; 93.0%] | 89.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_nlu_8296shot_balance | 100 | 83.0% [75.0%; 90.0%] | 84.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_trec_coarse_6600shot_balance | 100 | 70.0% [61.0%; 79.0%] | 62.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | icl_trec_fine_6400shot_balance | 100 | 52.0% [42.0%; 62.0%] | 53.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-bm25-4omini | média MCC | 500 | 76.8% [73.4%; 80.2%] | 75.4% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mhqa-emb-4omini | ruler_qa2_421K | 100 | 45.0% [35.0%; 55.0%] | 44.0% | sim |  |  |
+| direta-mcc-emb-4omini | icl_banking77_5900shot_balance | 100 | 91.0% [85.0%; 96.0%] | 88.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-emb-4omini | icl_clinic150_7050shot_balance | 100 | 89.0% [82.0%; 95.0%] | 89.0% | sim | 0.0% [0.0%; 0.0%] |  |
+| direta-mcc-emb-4omini | icl_nlu_8296shot_balance | 66 | 84.8% [75.8%; 92.4%] | 83.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (66 de 100) |
+| direta-mcc-emb-4omini | icl_trec_coarse_6600shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
+| direta-mcc-emb-4omini | icl_trec_fine_6400shot_balance | não rodada |  |  |  |  | parcial (0 de 100) |
+| direta-mcc-emb-4omini | média MCC | 266 | 88.7% [85.0%; 92.5%] | 70.0% | sem teste | 0.0% [0.0%; 0.0%] | parcial (266 de 500) |
 
 Custos, colados sem edição:
 
@@ -207,47 +220,83 @@ Custos, colados sem edição:
 |---|---|---|---|---|---|---|---|---|
 | direta-mhqa-lc-4omini | 100 | 12,402,749 | 96.9% | 986 | 0.9596 | 0 | 0 |  |
 | direta-mhqa-bm25-4omini | 100 | 553,947 | 0.0% | 1,136 | 0.0838 | 0 | 0 |  |
-| direta-mcc-lc-4omini | 171 | 18,186,236 | 96.9% | 680 | 1.4062 | 1 | 0 | parcial (170 de 500) |
-| direta-mcc-bm25-4omini | 10 | 414,375 | 12.9% | 40 | 0.0582 | 0 | 0 | parcial (10 de 500) |
-| direta-mhqa-emb-4omini | 10 | 54,743 | 0.0% | 147 | 0.0083 | 0 | 0 | parcial (10 de 100) |
+| direta-mcc-lc-4omini | 500 | 53,259,848 | 97.2% | 2,000 | 4.1068 | 0 | 0 |  |
+| direta-mcc-bm25-4omini | 500 | 21,131,867 | 26.7% | 2,000 | 2.7480 | 0 | 0 |  |
+| direta-mhqa-emb-4omini | 100 | 553,033 | 0.0% | 1,568 | 0.0839 | 0 | 0 |  |
+| direta-mcc-emb-4omini | 266 | 9,016,322 | 12.8% | 1,064 | 1.2667 | 0 | 0 | parcial (266 de 500) |
 
-As 10 primeiras linhas de cada configuração direta vêm do piloto: mesmo código, mesmo modelo e mesmas perguntas; só o carimbo de hora do template de memorização difere.
+As 10 primeiras linhas de cada configuração direta vêm do piloto: mesmo código, mesmo modelo e mesmas perguntas; só o carimbo de hora do template de memorização difere. A repetição do TREC fine, da janela de depuração, está em `resultados/20261110-depuracao/` e na seção 5.2.
 
 ### 4.2 OAB
 
-Rodada em `resultados/20261110-oab/`. As primárias da H1 OAB e da H2 OAB (GPT-4o-mini, contexto longo × BM25) estão **pendentes**: na `tabela.md`, as quatro aparecem como "não rodada".
+Rodada em `resultados/20261110-oab/`. As linhas da H1 OAB e da H2 OAB da tabela de primárias, coladas de `tabela.md` sem edição (as da etapa direta dessa tabela dizem "não rodada"):
 
-Acurácias das configurações que rodaram, coladas sem edição (seção "Secundárias" da `tabela.md`):
+| Comparação | n | Contexto longo | RAG BM25 | Diferença | Veredito | Nota |
+|---|---|---|---|---|---|---|
+| H1 OAB | 300 | 58.7% [53.0%; 64.3%] | 64.0% [58.3%; 69.3%] | +5.3 pp [+1.7; +9.0] | confirmada |  |
+| H2 OAB | 224 | 65.2% [58.9%; 71.4%] | 66.1% [59.8%; 72.3%] | +0.9 pp [-3.6; +5.4] | inconclusiva |  |
+
+Comparações secundárias registradas no desenho, sem veredito, coladas sem edição da seção "Comparações secundárias" da `tabela.md` (as duas linhas da etapa direta dessa seção dizem "não rodada"). Diferença = RAG − contexto longo, com o intervalo de 95% do bootstrap pareado:
+
+| Comparação | n | Contexto longo | RAG | Diferença | Nota |
+|---|---|---|---|---|---|
+| H1 OAB, GPT-4o-mini: contexto longo × embedding | 300 | 58.7% [53.0%; 64.3%] | 64.0% [58.7%; 69.3%] | +5.3 pp [+1.3; +9.7] |  |
+| H1 OAB, Haiku: contexto longo × BM25 | 300 | 73.7% [68.7%; 78.7%] | 74.3% [69.3%; 79.0%] | +0.7 pp [-2.7; +4.0] |  |
+| H1 OAB, Haiku: contexto longo × embedding | 300 | 73.7% [68.7%; 78.7%] | 72.7% [67.3%; 77.7%] | -1.0 pp [-4.7; +2.7] |  |
+| H2 OAB, GPT-4o-mini: contexto longo × embedding | 224 | 65.2% [58.9%; 71.4%] | 67.0% [60.7%; 73.2%] | +1.8 pp [-2.2; +5.8] |  |
+| H2 OAB, Haiku: contexto longo × BM25 | 224 | 73.2% [67.4%; 79.0%] | 70.5% [64.3%; 76.3%] | -2.7 pp [-7.6; +2.2] |  |
+| H2 OAB, Haiku: contexto longo × embedding | 224 | 73.2% [67.4%; 79.0%] | 75.9% [70.1%; 81.2%] | +2.7 pp [-1.3; +6.7] |  |
+
+Acurácias das outras configurações, coladas sem edição (seção "Secundárias" da `tabela.md`):
 
 | Configuração | n | Acurácia | Nota |
 |---|---|---|---|
 | oab-sem-memoria-4omini | 3377 | 58.9% [57.3%; 60.6%] |  |
 | oab-sem-memoria-haiku | 3377 | 70.7% [69.2%; 72.3%] |  |
+| oab-h1-emb-4omini | 300 | 64.0% [58.7%; 69.3%] |  |
 | oab-h1-bm25-haiku | 300 | 74.3% [69.3%; 79.0%] |  |
+| oab-h1-emb-haiku | 300 | 72.7% [67.3%; 77.7%] |  |
+| oab-h1-bm25-4omini-k2 | 300 | 61.7% [56.0%; 67.0%] |  |
+| oab-h1-bm25-4omini-k5 | 300 | 63.3% [57.7%; 68.7%] |  |
+| oab-h1-bm25-4omini-k20 | 300 | 62.0% [56.3%; 67.3%] |  |
+| oab-h1corpus-bm25-4omini | 300 | 64.0% [58.3%; 69.3%] |  |
 | oab-h2-bm25-haiku | 224 | 70.5% [64.3%; 76.3%] |  |
 | oab-h1-lc-haiku | 300 | 73.7% [68.7%; 78.7%] |  |
 | oab-h2-lc-haiku | 224 | 73.2% [67.4%; 79.0%] |  |
+| oab-h2-emb-4omini | 224 | 67.0% [60.7%; 73.2%] |  |
+| oab-h2-emb-haiku | 224 | 75.9% [70.1%; 81.2%] |  |
 
-Comparações secundárias registradas no desenho, sem veredito: as duas do Haiku que têm dados, coladas sem edição da seção "Comparações secundárias" da `tabela.md` (as outras seis linhas dizem "não rodada"). Diferença = RAG − contexto longo, com o intervalo de 95% do bootstrap pareado:
+A ablação de k (BM25 do GPT-4o-mini na H1) deu 61,7% com k = 2, 63,3% com k = 5, 64,0% com k = 10 (a primária) e 62,0% com k = 20; o BM25 no corpus inteiro deu 64,0%. Para elas não há par calculado, só as acurácias, cujos intervalos se sobrepõem.
 
-| Comparação | n | Contexto longo | RAG | Diferença | Nota |
-|---|---|---|---|---|---|
-| H1 OAB, Haiku: contexto longo × BM25 | 300 | 73.7% [68.7%; 78.7%] | 74.3% [69.3%; 79.0%] | +0.7 pp [-2.7; +4.0] |  |
-| H2 OAB, Haiku: contexto longo × BM25 | 224 | 73.2% [67.4%; 79.0%] | 70.5% [64.3%; 76.3%] | -2.7 pp [-7.6; +2.2] |  |
-
-Pares **exploratórios, não registrados** no desenho. Servem para levantar hipóteses, não para confirmar nada, e não há correção para multiplicidade entre eles. Cada linha compara a configuração a com a b nas mesmas questões; a coluna da direita é b − a com o intervalo de 95% do bootstrap pareado. Nas linhas restritas à H1 ou ao teste da H2, a linha de base sem memória usa só as 300 ou as 224 questões dessas comparações:
+Comparações **exploratórias, não registradas** no desenho. Servem para levantar hipóteses, não para confirmar nada, e não há correção para multiplicidade entre elas. Cada linha compara a configuração a com a b nas mesmas questões; a coluna da direita é b − a com o intervalo de 95% do bootstrap pareado. Nas linhas restritas à H1 ou ao teste da H2, a linha de base sem memória usa só as 300 ou as 224 questões dessas comparações:
 
 | Par (a × b) | n | a | b | b − a (IC 95%) |
 |---|---|---|---|---|
+| H1 OAB GPT-4o-mini: sem memória × contexto longo | 300 | 54.3% | 58.7% | +4.3 pp [+0.0; +8.7] |
+| H1 OAB GPT-4o-mini: sem memória × BM25 | 300 | 54.3% | 64.0% | +9.7 pp [+5.0; +14.7] |
+| H1 OAB GPT-4o-mini: sem memória × embedding | 300 | 54.3% | 64.0% | +9.7 pp [+5.3; +14.3] |
+| H2 OAB GPT-4o-mini: sem memória × contexto longo | 224 | 63.8% | 65.2% | +1.3 pp [-3.6; +6.2] |
+| H2 OAB GPT-4o-mini: sem memória × BM25 | 224 | 63.8% | 66.1% | +2.2 pp [-2.7; +7.1] |
+| H2 OAB GPT-4o-mini: sem memória × embedding | 224 | 63.8% | 67.0% | +3.1 pp [-0.9; +7.1] |
 | H1 OAB Haiku: sem memória × contexto longo | 300 | 69.3% | 73.7% | +4.3 pp [-0.3; +9.0] |
 | H1 OAB Haiku: sem memória × BM25 | 300 | 69.3% | 74.3% | +5.0 pp [+0.3; +10.0] |
+| H1 OAB Haiku: sem memória × embedding | 300 | 69.3% | 72.7% | +3.3 pp [-1.3; +8.0] |
 | H2 OAB Haiku: sem memória × contexto longo | 224 | 69.2% | 73.2% | +4.0 pp [-0.9; +8.9] |
 | H2 OAB Haiku: sem memória × BM25 | 224 | 69.2% | 70.5% | +1.3 pp [-4.0; +6.2] |
+| H2 OAB Haiku: sem memória × embedding | 224 | 69.2% | 75.9% | +6.7 pp [+1.8; +11.6] |
 | Sem memória: GPT-4o-mini × Haiku (3.377) | 3377 | 58.9% | 70.7% | +11.8 pp [+10.1; +13.5] |
 | Sem memória, amostra da H1: GPT-4o-mini × Haiku | 300 | 54.3% | 69.3% | +15.0 pp [+9.7; +20.3] |
 | Sem memória, teste da H2: GPT-4o-mini × Haiku | 224 | 63.8% | 69.2% | +5.4 pp [-0.9; +11.6] |
+| H1: Haiku sem memória × GPT-4o-mini BM25 | 300 | 69.3% | 64.0% | -5.3 pp [-11.3; +0.3] |
+| H1: Haiku sem memória × GPT-4o-mini embedding | 300 | 69.3% | 64.0% | -5.3 pp [-11.0; +0.0] |
+| H2: Haiku sem memória × GPT-4o-mini embedding | 224 | 69.2% | 67.0% | -2.2 pp [-8.5; +3.6] |
 
-As duas últimas linhas foram calculadas para este documento, da mesma forma que as outras.
+Também exploratória, não registrada: a primária da H1 OAB separada pelo corte do contexto longo do GPT-4o-mini. Os contextos cortados são os 7 dos 15 com entrada de 120 mil tokens ou mais, em que ele vê só o fim da lei; nos outros 8, vê a lei inteira.
+
+| Contextos | Questões | Contexto longo | BM25 | BM25 − contexto longo (IC 95%) |
+|---|---|---|---|---|
+| cortados (7) | 159 | 59,7% | 64,8% | +5,0 pp [+0,0; +10,7] |
+| inteiros (8) | 141 | 57,4% | 63,1% | +5,7 pp [+1,4; +10,6] |
 
 Custos, colados sem edição. A coluna US$ não inclui os embeddings, que ficam só no livro-caixa:
 
@@ -255,18 +304,32 @@ Custos, colados sem edição. A coluna US$ não inclui os embeddings, que ficam 
 |---|---|---|---|---|---|---|---|---|
 | oab-sem-memoria-4omini | 3377 | 1,076,206 | 0.0% | 3,429 | 0.1635 | 0 | 0 |  |
 | oab-sem-memoria-haiku | 3377 | 1,803,542 | 0.0% | 10,131 | 0.1854 | 0 | 0 |  |
+| oab-h1-lc-4omini | 300 | 27,403,864 | 94.2% | 580 | 2.1756 | 0 | 0 |  |
+| oab-h1-bm25-4omini | 300 | 1,780,180 | 0.1% | 701 | 0.2673 | 0 | 0 |  |
+| oab-h2-lc-4omini | 224 | 27,867,265 | 98.3% | 970 | 2.1269 | 0 | 0 |  |
+| oab-h2-bm25-4omini | 224 | 9,357,047 | 1.9% | 1,054 | 1.3910 | 0 | 0 |  |
+| oab-h1-emb-4omini | 300 | 1,728,215 | 0.7% | 792 | 0.2588 | 0 | 0 |  |
 | oab-h1-bm25-haiku | 300 | 2,978,557 | 0.0% | 900 | 0.2983 | 0 | 0 |  |
+| oab-h1-emb-haiku | 300 | 2,866,226 | 0.0% | 900 | 0.2871 | 0 | 0 |  |
+| oab-h1-bm25-4omini-k2 | 300 | 447,093 | 0.5% | 1,178 | 0.0676 | 0 | 0 |  |
+| oab-h1-bm25-4omini-k5 | 300 | 949,111 | 0.2% | 950 | 0.1428 | 0 | 0 |  |
+| oab-h1-bm25-4omini-k20 | 300 | 3,426,659 | 0.0% | 689 | 0.5143 | 0 | 0 |  |
+| oab-h1corpus-bm25-4omini | 300 | 1,843,856 | 0.1% | 814 | 0.2770 | 0 | 0 |  |
 | oab-h2-bm25-haiku | 224 | 16,239,481 | 0.0% | 2,016 | 1.6250 | 0 | 0 |  |
 | oab-h1-lc-haiku | 300 | 59,400,199 | 95.3% | 922 | 4.2309 | 0 | 0 |  |
 | oab-h2-lc-haiku | 224 | 202,324,859 | 99.5% | 2,016 | 10.7107 | 0 | 0 |  |
+| oab-h2-emb-4omini | 224 | 9,297,164 | 8.8% | 1,055 | 1.3341 | 0 | 0 |  |
+| oab-h2-emb-haiku | 224 | 16,077,557 | 0.0% | 2,016 | 1.6088 | 0 | 0 |  |
+
+O contexto longo custou mais que o BM25 nas quatro comparações contexto longo × BM25: com o GPT-4o-mini, 8,1 vezes na H1 (US$ 2,1756 contra US$ 0,2673) e 1,5 vez na H2 (US$ 2,1269 contra US$ 1,3910); com o Haiku, 14,2 vezes na H1 (US$ 4,2309 contra US$ 0,2983) e 6,6 vezes na H2 (US$ 10,7107 contra US$ 1,6250). Na H2 do GPT-4o-mini a distância é pequena: o contexto longo vê só ~124 mil tokens e vem quase todo do cache (98,3%), enquanto cada busca do RAG traz ~41 mil tokens quase sem cache (1,9%).
 
 As linhas de base sem memória são as do piloto, copiadas para a pasta da rodada: mesma configuração, mesmo código e mesmas questões. O Haiku sem memória acertou 69,2% das 224 questões de teste da H2, abaixo dos 90% que fechariam o portão do contexto longo dele na H2 (acima disso, o modelo provavelmente já teria visto as questões). A projeção do piloto para a Anthropic ficou em ~US$ 18, abaixo dos US$ 24 que mandariam reduzir a memória do Haiku na H2 para 600 mil tokens, então a variante rodada é a de 1M.
 
 O gráfico qualidade × tokens da OAB H1:
 
-![OAB H1: acurácia do Haiku com contexto longo contra os tokens de entrada médios por pergunta](../resultados/20261110-oab/qualidade_tokens.png)
+![OAB H1: acurácia contra os tokens de entrada médios por pergunta, para o BM25 do GPT-4o-mini com k = 2, 5, 10 e 20 e para o contexto longo do GPT-4o-mini e do Haiku](../resultados/20261110-oab/qualidade_tokens.png)
 
-Por enquanto ele tem um ponto só, o contexto longo do Haiku. A curva que motivou o gráfico, o BM25 do GPT-4o-mini com k = 2, 5, 10 e 20, e o ponto do contexto longo do GPT-4o-mini estão **pendentes**. O eixo x conta os tokens de cada modelo: o tokenizador do Haiku dá 1,71× mais tokens que o `o200k_base` do GPT-4o-mini no mesmo texto jurídico.
+A curva do BM25 do GPT-4o-mini com k = 2, 5, 10 e 20 fica entre 61,7% e 64,0%. Nas estimativas, o contexto longo do GPT-4o-mini, que gasta muito mais tokens por pergunta, fica abaixo da curva, em 58,7%, e o do Haiku fica acima de todos, em 73,7%. O eixo x conta os tokens de cada modelo: o tokenizador do Haiku dá 1,71× mais tokens que o `o200k_base` do GPT-4o-mini no mesmo texto jurídico.
 
 ## 5. Leitura honesta
 
@@ -274,39 +337,49 @@ Por enquanto ele tem um ponto só, o contexto longo do Haiku. A curva que motivo
 
 O RAG BM25 venceu o contexto longo por 14,0 pontos no MH-Doc QA, e o intervalo exclui zero: pela regra registrada, a H1 direta está **confirmada**. Por pouco, porém: o limite inferior é +2,0, e é uma rodada só, com temperatura 0,7. Os dois números ficaram a 1 ponto (42,0 × 43,0) e a 0 ponto (56,0 × 56,0) dos do artigo. O teste de reprodução é frouxo, porque com 100 perguntas cada intervalo tem 20 pontos de largura. A distância de 1 e de 0 ponto é um sinal a mais a favor da reprodução, mas vem da mesma amostra de 100 perguntas.
 
-Duas observações mudam a leitura do "RAG vence":
+Três observações mudam a leitura do "RAG vence":
 
-- **O contexto longo não viu o contexto inteiro.** Com a janela de 128K do GPT-4o-mini, o agente do autor guarda os últimos ~124 mil tokens de um contexto de ~421 mil (seção 3.2). A comparação da H1 direta é, então, a de um RAG que indexa tudo contra um contexto longo que vê menos de um terço. É exatamente o que o artigo rodou, e por isso a replicação é fiel; mas o achado diz "o RAG vence quando o contexto não cabe na janela" com mais segurança do que diz "o RAG lê melhor um trecho preciso".
+- **O contexto longo não viu o contexto inteiro.** Com a janela de 128K do GPT-4o-mini, o agente do autor guarda os últimos ~124 mil tokens de um contexto de ~421 mil (seção 3.2). A comparação da H1 direta é, então, a de um RAG que indexa tudo contra um contexto longo que vê menos de um terço. É exatamente o que o artigo rodou, e por isso a replicação é fiel; mas, sozinho, o MH-QA diz "o RAG vence quando o contexto não cabe na janela" com mais segurança do que diz "o RAG lê melhor um trecho preciso". A OAB ajuda a separar as duas leituras (seção 5.3).
+- **O RAG por embedding não se separa do contexto longo** (secundária, sem veredito): 45,0% contra 42,0%, +3,0 pp [−6,0; +13,0]. O embedding reproduz o artigo (44,0 cai em [35,0; 55,0]) e, como lá, fica abaixo do BM25 na estimativa (45,0% contra 56,0%; no artigo, 44,0 contra 56,0). A vitória do RAG no MH-QA é a do BM25; a seção 5.4 descreve uma peculiaridade do agente de embedding que ajuda a explicar isso.
 - **O RAG custou 11 vezes menos.** US$ 0,0838 contra US$ 0,9596, com 96,9% da entrada do contexto longo cacheada. Sem cache, a distância seria maior.
 
-### 5.2 H2 direta: sem veredito
+### 5.2 H2 direta: inconclusiva, e a média do contexto longo não reproduz
 
-A H2 direta tem 10 perguntas pareadas, as primeiras do BANKING77, e nelas o BM25 (80,0%) ficou acima do contexto longo (60,0%), contra o artigo. Isso não diz nada: o intervalo da diferença é [+0,0; +50,0], e nas 100 perguntas do BANKING77 o contexto longo acertou 89,0%, o que faz dessas 10 um começo difícil. O veredito sai quando as 500 perguntas existirem nos dois braços.
+Nas 500 perguntas das cinco MCC, o contexto longo acertou 77,0% e o BM25 76,8%. A diferença, −0,2 pp [−2,8; +2,4], contém zero: pela regra registrada, a H2 direta é **inconclusiva**. O intervalo é estreito e não chega aos −6,6 pontos do artigo (75,4 − 82,0), que 500 perguntas detectariam (Correção 7). A vantagem do contexto longo que o artigo mediu não apareceu aqui; mas, pela regra, um intervalo em torno de zero é inconclusivo, não contrário.
 
-O que já dá para dizer:
+- **O BM25 reproduz; o contexto longo, não.** A média do BM25, 76,8% [73,4; 80,2], contém os 75,4 do artigo. A do contexto longo, 77,0% [73,4; 80,4], fica abaixo dos 82,0 da Tabela 3 e também dos 82,4 que dá a média dos cinco números da Tabela 7 (93,0, 93,0, 87,0, 73,0 e 66,0); a inconsistência do artigo não muda a conclusão. Por fonte, os cinco números do BM25 reproduzem e ficam dos dois lados do artigo (+3, −2, −1, +8 e −1 pontos). Os do contexto longo ficam todos abaixo (−4, −5, −3, −5 e −10), e só o do TREC fine, 56,0% [46,0; 65,0] contra 66,0, sai do intervalo. Com 100 perguntas, o intervalo de cada fonte tem uns ±9 pontos, e por isso quatro ainda reproduzem; o que pesa é que as cinco caem do mesmo lado, e a média das 500 sai do intervalo.
+- **O `exact_match` estrito deu 0,0% em todas as medições das MCC** (as 500 perguntas nos dois braços primários e as 266 do embedding). O prompt do próprio autor pede `Only output "label: {label}"`, o GPT-4o-mini obedece ("label: 68"), e o `exact_match` estrito do README conta isso como erro. O código do autor não normaliza "label:" em lugar nenhum, então o estrito não pode ter gerado os 82,0 e 93,0 do artigo, e deixaria a H2 direta degenerada (0 × 0). A primária passou a ser a leitura flexível, com o estrito ao lado em toda tabela. A decisão veio do formato da resposta no piloto, com os dois braços em zero, e não de quem vencia; as duas leituras estão gravadas em cada linha.
+- **A reprodução do embedding nas MCC é parcial.** Parou no teto com 266 de 500 perguntas. No BANKING77 (91,0% [85,0; 96,0] contra 88,0) e no CLINC150 (89,0% [82,0; 95,0] contra 89,0), reproduz; o NLU tem 66 de 100 (84,8%, sem teste), e a média fica sem teste. A secundária contexto longo × embedding, nessas 266 perguntas, dá +1,1 pp [−1,5; +4,1], parcial.
 
-- **O contexto longo reproduz o artigo no BANKING77:** 89,0% [83,0; 95,0] contra 93,0. No CLINC150 há 71 linhas: 70 respostas finais e um erro de API, que conta como errado. Os 85,9% são sobre as 71, sem teste. A média parcial do contexto longo (87,7%, 171 linhas) não se compara aos 82,0 do artigo: vem só dos dois datasets em que o artigo dá 93,0, e o TREC grosso e o fino, em que o artigo dá 73,0 e 66,0, ainda não rodaram.
-- **O `exact_match` estrito deu 0,0% em todas as medições das MCC até agora** (100 perguntas do BANKING77 e 71 do CLINC150 no contexto longo, 10 no BM25). O prompt do próprio autor pede `Only output "label: {label}"`, o GPT-4o-mini obedece ("label: 68"), e o `exact_match` estrito do README conta isso como erro. O código do autor não normaliza "label:" em lugar nenhum, então o estrito não pode ter gerado os 82,0 e 93,0 do artigo, e deixaria a H2 direta degenerada (0 × 0). A primária passou a ser a leitura flexível, com o estrito ao lado em toda tabela. A decisão veio do formato da resposta, com os dois braços em zero, e não de quem vencia; as duas leituras estão gravadas em cada linha, e a análise pode ser refeita com a outra sem rodar nada.
-- **Os 82,0 × 82,4 do artigo.** A Tabela 3 dá 82,0 para o contexto longo do GPT-4o-mini na média das MCC, mas a média dos cinco números da Tabela 7 (93,0, 93,0, 87,0, 73,0 e 66,0) é 82,4. Para o BM25 (75,4) e o embedding (70,0), as duas tabelas batem. O teste de reprodução usa os 82,0 da Tabela 3; quando a média do contexto longo existir, o documento vai dizer se o intervalo contém os dois números ou só um.
+**A janela de depuração.** O plano (Task 13) abre uma janela de depuração quando uma primária da etapa direta não reproduz: até três dias úteis e os US$ 4 da reserva, para comparar a reimplementação com o código do autor. Ela foi aberta e fechada em 2026-11-10. Tudo foi conferido sem gastar, exceto o último item:
 
-### 5.3 OAB: o que as secundárias do Haiku mostram
+- **A métrica não é a causa.** Nenhuma das 500 respostas do contexto longo veio fora do formato `label: N`, e o acerto por substring dá exatamente o mesmo número que a leitura flexível em todas as fontes.
+- **Não há corte de contexto.** Nas MCC, a entrada do contexto longo tem ~104 a 107 mil tokens, abaixo do limite (128.000 − 4.000): o modelo viu o contexto inteiro.
+- **Os parâmetros são os do autor:** temperatura 0,7, `input_length_limit` 128.000, `buffer_length` 4.000, `generation_max_length` 20 e chunk de 4.096 tokens, das configurações `Long_context_agent_gpt-4o-mini.yaml` e `ICL_*.yaml` do autor.
+- **Os prompts e a requisição são os do autor.** Os templates de memorizar, de perguntar e de sistema são idênticos aos de `utils/templates.py`, no MCC e no MH-QA. A requisição é uma mensagem de sistema e uma de usuário com o contexto, "\n" e a pergunta, como no `format_chat` do autor, com o mesmo `max_tokens`.
+- **O contexto é o mesmo, byte a byte.** Montado pelo nosso código e pelo código do autor (a função de fatiar e os templates dele), nas cinco fontes, os textos são idênticos, fora o carimbo de hora que o próprio template do autor põe em cada trecho. A reimplementação manda ao modelo a mesma requisição que o código do autor mandaria.
+- **Os dados das MCC do artigo não têm data conhecida.** O arquivo `Test_Time_Learning` aparece no Hugging Face pela primeira vez em 2025-09-29 (commit `25b29a8982`, "removed some in-efficient samples") e não muda até a revisão fixada (`7ea0669`); as revisões anteriores não têm as fontes `icl_*`. Como o artigo saiu em julho de 2025, não dá para saber com que dados as MCC dele rodaram.
+- **A repetição, o único teste pago** (US$ 0,80 da reserva). O contexto longo rodou de novo no TREC fine, nas mesmas 100 perguntas, em `resultados/20261110-depuracao/`: 52 de 100, contra 56 na rodada. 90 das 100 respostas saíram idênticas, e 92 com o mesmo acerto. Repetição − rodada: −4,0 pp [−10,0; +1,0]. A média das duas rodadas, 54,0% [44,5; 63,5], fica fora dos 66 do artigo: o ruído da temperatura não explica a distância.
 
-As primárias da OAB estão pendentes, então **não há veredito na OAB**. As secundárias do Haiku não dão veredito pela regra; o que segue é leitura dos intervalos.
+**Conclusão registrada: não reproduzido** (a média MCC no contexto longo). O desenho previa registrar "não reproduzido; não foi possível separar o autor da reimplementação". A primeira metade vale; a segunda, não: a reimplementação está descartada como causa, porque manda a mesma requisição que o código do autor, e o ruído da temperatura também. Sobram duas explicações que não dá para separar. O GPT-4o-mini servido hoje pela OpenAI pode responder diferente do que o autor chamou em 2025 (o código do autor usa o Azure OpenAI quando as variáveis do Azure estão definidas, e não sabemos se ele usou). E os dados das MCC do artigo podem não ser os publicados depois. Como o BM25 reproduz com os mesmos dados e o mesmo modelo, o que quer que tenha mudado afeta o contexto longo, com ~105 mil tokens por chamada, e não o BM25, com ~40 mil. Rodar o código do autor num subconjunto, como o plano sugeria, mandaria a mesma requisição e não separaria nada. A janela fechou no mesmo dia, com US$ 0,80 dos US$ 4 gastos.
 
-- **H1 (achar o trecho na lei):** o BM25 ficou +0,7 pp acima do contexto longo, com intervalo [−2,7; +4,0]. Na direção do artigo, mas sem diferença detectável. O contexto longo do Haiku vê cada lei inteira (a maior tem 264.994 tokens `o200k`, dentro do que ele guarda), ao contrário do GPT-4o-mini no MH-QA. E custou 14 vezes mais: US$ 4,23 contra US$ 0,30.
-- **H2 (aprender com as provas antigas):** o contexto longo ficou 2,7 pontos acima do BM25 (−2,7 pp [−7,6; +2,2] na convenção RAG − contexto longo). Também na direção do artigo, também sem diferença detectável. Custou 6,6 vezes mais: US$ 10,71 contra US$ 1,63.
-- **A memória e o modelo (exploratório).** Os pares deste item não estão entre as secundárias registradas no desenho, que são embedding × contexto longo, os pares do Haiku contexto longo × RAG, cada dataset separado e a ablação de k. Servem para levantar hipóteses. O Haiku sem memória acerta 69,3% das questões da H1 e 69,2% das da H2. A memória somou de +1,3 a +5,0 pontos. A maior estimativa é a do BM25 na H1, +5,0 pp [+0,3; +10,0], o único dos quatro intervalos que exclui zero; com quatro comparações e nenhuma correção para multiplicidade, um intervalo assim pode aparecer por acaso. Os intervalos vão até +8,9 e +10,0, então a memória pode ajudar mais do que as estimativas pontuais sugerem. Nas mesmas questões, o Haiku sem memória acerta mais que o GPT-4o-mini sem memória: +15,0 pp [+9,7; +20,3] na amostra da H1 (54,3% × 69,3%) e +5,4 pp [−0,9; +11,6] no teste da H2 (63,8% × 69,2%). Na H2, a diferença entre os modelos tem o tamanho do ganho do contexto longo do Haiku sobre o Haiku sem memória (+4,0) e também contém zero. Comparar a troca de modelo com a memória exige os braços com memória do GPT-4o-mini, que estão pendentes.
+### 5.3 OAB: H1 confirmada, H2 inconclusiva
+
+- **H1 (achar o trecho na lei): confirmada.** O BM25 do GPT-4o-mini acertou 64,0% e o contexto longo 58,7%: +5,3 pp [+1,7; +9,0], intervalo que exclui zero na direção do artigo. A secundária com embedding dá a mesma estimativa, +5,3 pp [+1,3; +9,7]. O contexto longo custou 8,1 vezes mais que o BM25.
+- **O corte do contexto não explica a vitória do RAG (exploratório, não registrado no desenho).** O GPT-4o-mini vê só o fim dos 7 contextos que passam do limite (159 das 300 questões). A versão anterior deste documento (`8785a60`), escrita antes de as primárias da OAB rodarem, propôs separar essas questões das outras 141 para ver se a janela explicava um "RAG vence". Ela não explica: o BM25 fica à frente, com estimativas parecidas, nos contextos cortados, +5,0 pp [+0,0; +10,7], e nos que o contexto longo vê inteiros, +5,7 pp [+1,4; +10,6]. Onde o contexto longo lê a lei inteira, o BM25 ainda acerta mais. São dois pares exploratórios, sem correção para multiplicidade, e o intervalo dos cortados toca zero.
+- **Com o Haiku, os dois não se separam na H1 (secundárias, sem veredito):** +0,7 pp [−2,7; +4,0] com o BM25 e −1,0 pp [−4,7; +2,7] com o embedding. O contexto longo do Haiku vê cada lei inteira (a maior tem 264.994 tokens `o200k`, dentro do que ele guarda) e custou 14,2 vezes mais que o BM25. Se o BM25 vence com o GPT-4o-mini e não se separa do contexto longo com o Haiku, e a janela não explica a vitória, o candidato mais simples é o leitor: uma hipótese, não testada, é que o GPT-4o-mini aproveita pior um contexto longo do que o Haiku. A diferença entre os dois pares não foi calculada, e um intervalo que contém zero não mostra que o Haiku empata, só que não separou.
+- **H2 (aprender com as provas antigas): inconclusiva.** +0,9 pp [−3,6; +5,4]: a estimativa tem o sinal contrário ao que a H2 espera (o BM25 à frente), mas o intervalo contém zero. As secundárias também não separam os dois e ficam dos dois lados do zero: +1,8 pp [−2,2; +5,8] com o embedding do GPT-4o-mini; com o Haiku, −2,7 pp [−7,6; +2,2] no BM25 e +2,7 pp [−1,3; +6,7] no embedding. O contexto longo do GPT-4o-mini vê as questões mais recentes que cabem em ~124 mil tokens, cerca de um sexto da memória; o do Haiku, cerca de dois terços. O contexto longo custou 1,5 vez mais que o BM25 com o GPT-4o-mini e 6,6 vezes mais com o Haiku.
+- **A memória (exploratório, não registrado no desenho).** Na H1, a lei somou ao GPT-4o-mini sem memória (54,3%) +9,7 pp com o BM25 [+5,0; +14,7] e com o embedding [+5,3; +14,3], contra +4,3 pp [+0,0; +8,7] com o contexto longo. Na H2, nenhum dos três ganhos do GPT-4o-mini exclui zero (de +1,3 a +3,1 pp). No Haiku, que sem memória já acerta 69,3% e 69,2% dessas questões, a memória somou de +1,3 a +6,7 pp; dois dos seis intervalos excluem zero, o do BM25 na H1 (+5,0 pp [+0,3; +10,0]) e o do embedding na H2 (+6,7 pp [+1,8; +11,6]). Com tantas comparações e nenhuma correção para multiplicidade, um intervalo assim pode aparecer por acaso.
+- **A troca de modelo contra a memória (exploratório, não registrado no desenho).** Sem memória, o Haiku acerta +11,8 pp [+10,1; +13,5] a mais que o GPT-4o-mini nas 3.377 questões, +15,0 pp [+9,7; +20,3] na amostra da H1 e +5,4 pp [−0,9; +11,6] no teste da H2. Nas mesmas questões, o melhor braço com memória do GPT-4o-mini fica abaixo do Haiku sem memória nas estimativas: na H1, 64,0% contra 69,3% (−5,3 pp [−11,3; +0,3] com o BM25 e −5,3 pp [−11,0; +0,0] com o embedding); na H2, 67,0% contra 69,2% (−2,2 pp [−8,5; +3,6]). Os três intervalos tocam ou contêm zero e não separam. Na H1, o limite de cima é +0,3: o intervalo admite no máximo 0,3 ponto a favor do GPT-4o-mini com memória.
 - **Um limite que vale registrar:** não se sabe se o Haiku 5.5 viu as provas de 2024 e 2025 no treino. O portão de 90% existia para o caso extremo, e ele ficou em 69,2%, perto dos 69,3% das provas de 2018 a 2023.
-
-Se essas duas diferenças pequenas vão se repetir no GPT-4o-mini, só as primárias dirão. Uma expectativa, escrita antes de elas rodarem: o GPT-4o-mini vê só o fim dos 7 contextos que passam de ~124 mil tokens (159 das 300 questões). Se ele perder para o BM25 na H1 da OAB enquanto o Haiku empata, isso será compatível com a janela como explicação do "RAG vence", sem isolá-la, porque nessa comparação o modelo e a janela mudam juntos. Uma leitura mais limpa, também exploratória, compara dentro do próprio GPT-4o-mini as 159 questões dos contextos truncados com as 141 dos que cabem inteiros.
 
 ### 5.4 Peculiaridades achadas
 
-- **O agente de embedding do autor esquece.** Com `input_length_limit` 300.000 e `buffer_length` 15.000, ele descarta os trechos mais antigos quando a memória passa de ~285 mil tokens. No MH-QA, indexa só os últimos dois terços do contexto, enquanto o BM25, com limite de 10 milhões, indexa tudo. Isso ajuda a explicar o 44,0 do embedding contra o 56,0 do BM25 no artigo. É o que o artigo rodou, então ficou (Correção 5). A nossa reprodução do embedding no MH-QA tem só 10 de 100 perguntas (50,0%, sem teste). O mesmo limite tirou do experimento a variante "corpus inteiro" com embedding, que guardaria só ~285 mil dos 1.755.201 tokens das leis mapeadas para as matérias (as 44 leis do banco somam ~1,91 milhão).
+- **O agente de embedding do autor esquece.** Com `input_length_limit` 300.000 e `buffer_length` 15.000, ele descarta os trechos mais antigos quando a memória passa de ~285 mil tokens. No MH-QA, indexa só os últimos dois terços do contexto, enquanto o BM25, com limite de 10 milhões, indexa tudo. Isso ajuda a explicar o 44,0 do embedding contra o 56,0 do BM25 no artigo. É o que o artigo rodou, então ficou (Correção 5). A nossa reprodução do embedding no MH-QA deu 45,0% [35,0; 55,0] contra 44,0, abaixo do BM25 na estimativa, como no artigo (seção 5.1). O mesmo limite tirou do experimento a variante "corpus inteiro" com embedding, que guardaria só ~285 mil dos 1.755.201 tokens das leis mapeadas para as matérias (as 44 leis do banco somam ~1,91 milhão).
 - **Os 82,0 × 82,4 do artigo** e **o `exact_match` estrito nas MCC**: seção 5.2.
-- **Os modelos saem do ar.** Dos seis modelos de contexto longo do artigo, o Claude 3.7 Sonnet e o Gemini 2.0 Flash já não existem na API, e o GPT-5-mini sai em 2026-12-11, antes do fim deste experimento. O GPT-4o-mini, o modelo central da replicação, sai em 2027-01-14, e por isso todas as rodadas com a OpenAI precisam terminar até 2026-12-20. Uma replicação fiel do artigo inteiro já não é possível, e a desta parte dele tem prazo.
-- **BM25 em português com a tokenização de um artigo em inglês.** O `str.split()` do autor, sem minúsculas e com a pontuação grudada, foi mantido por fidelidade (seção 3.3). Mesmo assim, o BM25 do Haiku ficou a +0,7 pp do contexto longo na H1. Um BM25 com stemmer de português seria outra configuração, não rodada.
-- **O saldo pré-pago acabou antes da trava.** A trava do painel e o teto do livro-caixa protegem contra gastar demais, não contra a falta de saldo. A falta de saldo não perdeu dinheiro nem respostas, mas parou as primárias.
+- **Os modelos saem do ar, e antes disso podem mudar.** Dos seis modelos de contexto longo do artigo, o Claude 3.7 Sonnet e o Gemini 2.0 Flash já não existem na API, e o GPT-5-mini sai em 2026-12-11. O GPT-4o-mini, o modelo central da replicação, sai em 2027-01-14; as rodadas com a OpenAI terminaram em 2026-11-10, antes do prazo de 2026-12-20 que o experimento se deu. A janela de depuração (seção 5.2) não conseguiu separar uma mudança no GPT-4o-mini servido hoje de uma diferença nos dados das MCC: um modelo com o mesmo nome pode não responder como respondeu ao autor. Uma replicação fiel do artigo inteiro já não é possível, e a desta parte dele tem prazo.
+- **BM25 em português com a tokenização de um artigo em inglês.** O `str.split()` do autor, sem minúsculas e com a pontuação grudada, foi mantido por fidelidade (seção 3.3). Mesmo assim, o BM25 venceu o contexto longo do GPT-4o-mini na H1 da OAB. Um BM25 com stemmer de português seria outra configuração, não rodada.
+- **O saldo pré-pago acabou antes da trava.** A trava do painel e o teto do livro-caixa protegem contra gastar demais, não contra a falta de saldo. A falta de saldo não perdeu dinheiro nem respostas, mas atrasou as primárias até o crédito voltar.
 
 ## 6. Limitações
 
@@ -314,9 +387,10 @@ Se essas duas diferenças pequenas vão se repetir no GPT-4o-mini, só as primá
 
 | Limitação | O que se viu | O que falta ou estenderia |
 |---|---|---|
-| OpenAI sem saldo pré-pago | parou com US$ 3,29: H2 direta parcial; primárias da OAB, secundárias da OpenAI e Haiku com embedding sem rodar | crédito e os comandos da seção 9, até 2026-12-20 |
-| Uma rodada por configuração, temperatura 0,7 na OpenAI | intervalos de ~±10 pontos com 100 perguntas; a H1 direta foi confirmada com limite inferior de +2,0 | repetir as rodadas; com este orçamento, diferenças de 2 a 3 pontos não são detectáveis |
-| O contexto longo do GPT-4o-mini vê ~124 mil tokens | no MH-QA, menos de um terço do contexto; na OAB H1, verá só o fim de 7 dos 15 contextos (159 das 300 questões) | é o protocolo do artigo; o Haiku, que vê as leis inteiras na OAB H1, dá um contraste, confundido com a troca de modelo |
+| Teto de gasto da OpenAI | `direta-mcc-emb-4omini` parou no teto com 266 de 500 perguntas (BANKING77 e CLINC150 completos, NLU com 66 de 100, os dois TREC sem nenhuma): a média e a secundária da H2 direta com embedding ficam sem teste. Era esperado: é a última da fila, e a projeção do piloto para todas as configurações da OpenAI (US$ 19,62) passava do teto | ~US$ 1,8, com o teto do livro-caixa e a trava do painel mais altos (seção 9), até 2026-12-20 |
+| A média MCC do contexto longo não reproduz | 77,0% [73,4; 80,4] contra 82,0 (e 82,4); a requisição é a mesma do código do autor, e a temperatura não explica (seção 5.2) | rodar com o modelo que o autor chamou em 2025 (talvez pelo Azure OpenAI) ou com os dados com que o artigo rodou, que não temos |
+| Uma rodada por configuração, temperatura 0,7 na OpenAI | intervalos de ~±10 pontos com 100 perguntas; a H1 direta foi confirmada com limite inferior de +2,0. A única repetição, a do TREC fine, deu 52 contra 56, com 90 de 100 respostas idênticas | repetir as rodadas; com este orçamento, diferenças de 2 a 3 pontos não são detectáveis |
+| O contexto longo do GPT-4o-mini vê ~124 mil tokens | no MH-QA, menos de um terço do contexto; na OAB H1, só o fim de 7 dos 15 contextos (159 das 300 questões). Numa comparação exploratória, o BM25 fica à frente com estimativas parecidas nos contextos cortados e nos inteiros | é o protocolo do artigo |
 | BM25 com `str.split()` em português | sem minúsculas nem stemmer | BM25 com stemmer de português, como configuração separada |
 | Matéria reclassificada | 65 de 953 questões fora do bloco da FGV, com a mesma lei nos dois braços, o que puxa a diferença para zero | o Pedro reconferir; uma variante com a matéria imposta pelo bloco |
 | O corpus de leis é uma foto | CPC de uma edição de 2016, CLT atual, Lei 14.133 no lugar da 8.666; o gabarito segue a lei vigente na data da prova (Pacote Anticrime de 2019, Lei 14.133 de 2021) | um corpus com as versões das leis |
@@ -325,7 +399,7 @@ Se essas duas diferenças pequenas vão se repetir no GPT-4o-mini, só as primá
 | Tokenizador do Haiku | 1,71× mais tokens que o `o200k_base`; o eixo do gráfico mistura as duas contagens | — |
 | Custos das tabelas sem embeddings | as configurações do Haiku com embedding gastam também na OpenAI | o livro-caixa tem o total |
 | Deduplicação com `SequenceMatcher` | o `autojunk` padrão torna a razão dependente da ordem dos textos | — |
-| Livro-caixa × painéis | comparação **pendente** (diferença de até 10% aceita) | o Pedro comparar `resultados/livro_caixa.json` com os painéis |
+| Livro-caixa × painéis | o livro-caixa fechou em US$ 19,4963 na OpenAI e US$ 20,2306 na Anthropic; a comparação com os painéis não foi feita (diferença de até 10% aceita) | o Pedro comparar `resultados/livro_caixa.json` com os painéis (seção 6.3) |
 
 ### 6.2 Decisões tomadas pelo Claude durante a execução sem o Pedro
 
@@ -339,8 +413,8 @@ Decisões que mexem nos dados, no protocolo, no gasto ou na leitura:
 4. **Prompt da reclassificação:** a rodada 1 foi reprovada pela regra do plano; o prompt passou a informar o número da questão e a ordem dos blocos da FGV, e a rodada 2 foi conferida numa amostra nova (semente 43).
 5. **Conferências de matéria:** as duas foram feitas pelo Claude e são provisórias até o Pedro reconferir.
 6. **As 65 questões fora do bloco** ficaram com o rótulo do GPT-4o-mini, o método aprovado pela regra, em vez de impor o bloco.
-7. **Embeddings acima de 8.191 tokens** são truncados nesse limite, com aviso, porque a API recusa; afeta 2 trechos das MCC, se entrarem no índice (seção 3.1).
-8. **Recusa e resposta vazia** contam como respostas finais, pagas e erradas, e não são refeitas na retomada; até agora não houve nenhuma.
+7. **Embeddings acima de 8.191 tokens** são truncados nesse limite, com aviso, porque a API recusa; afetou os 2 trechos das MCC que passam do limite (seção 3.1).
+8. **Recusa e resposta vazia** contam como respostas finais, pagas e erradas, e não são refeitas na retomada; não houve nenhuma.
 9. **Piloto com as linhas de base completas:** as configurações sem memória ignoraram o limite de 10 perguntas do piloto, porque o portão do Haiku precisa delas.
 10. **Linhas de base copiadas do piloto** para a pasta da rodada da OAB, em vez de pagá-las de novo.
 11. **As 10 primeiras linhas de cada configuração direta** foram reaproveitadas do piloto.
@@ -349,40 +423,45 @@ Decisões que mexem nos dados, no protocolo, no gasto ou na leitura:
 14. **Portão do Haiku sempre ativo** para o contexto longo do Haiku na H2, lendo a linha de base da mesma pasta; na OAB, os nomes vão explícitos; a reprodução das MCC por embedding roda por último, na pasta da etapa direta.
 15. **Estimativa prévia de custo na Anthropic** com o preço de escrita de cache, para a trava recusar antes de poder passar do teto.
 16. **Livro-caixa × painéis** deixado para o Pedro, sem chave de administração para a API de custos.
-17. **Janela de depuração da etapa direta**, se precisar, vira uma investigação nesta sessão dentro dos US$ 4 da reserva. Não foi aberta: o MH-QA reproduziu e as MCC estão pendentes.
+17. **Janela de depuração da etapa direta** como uma investigação nesta sessão, dentro dos US$ 4 da reserva, em vez de três dias úteis. Foi aberta porque a média MCC do contexto longo não reproduziu, e fechou com "não reproduzido", tendo descartado a reimplementação e o ruído da temperatura (seção 5.2).
 18. **Revisão ampla do código** adiantada para antes da rodada da OAB.
 19. **Detecção da falta de crédito pelo texto** da mensagem da OpenAI (`fff61c6`), com a menor mudança possível.
 20. **Ordem depois da falta de crédito:** as quatro configurações só da Anthropic rodaram antes das primárias da OpenAI, que não podiam rodar; dentro da Anthropic, a ordem de prioridade foi mantida.
-21. **Este documento** foi escrito com as partes da OpenAI pendentes, para ser atualizado quando o crédito voltar.
+21. **Este documento** foi escrito primeiro com as partes da OpenAI pendentes e completado depois que o crédito voltou.
+22. **O vigia que retomou sozinho.** Enquanto a OpenAI estava sem crédito, um processo em segundo plano fazia uma chamada de 1 token a cada 15 minutos, pelo livro-caixa. Quando o crédito voltou, ele retomou sem esperar ninguém o resto da etapa direta e as quatro primárias da OAB, na ordem do plano e sem a reserva. Por quê: essas rodadas estavam pré-autorizadas dentro dos tetos, e pôr crédito na conta era o sinal do Pedro para continuar; a sonda custa uma fração de centavo; e as primárias da OAB não dependem da janela de depuração, porque o desenho manda a OAB seguir mesmo que a etapa direta não reproduza. A reserva e as secundárias ficaram para depois do teste de reprodução.
+23. **US$ 0,80 da reserva numa repetição do TREC fine, em vez de rodar o código do autor num subconjunto**, como o plano sugeria. Por quê: a conferência byte a byte mostrou que o código do autor mandaria ao modelo a mesma requisição que o nosso, então rodá-lo não separaria nada. A única hipótese que um gasto ainda podia testar era o ruído da temperatura 0,7, e a repetição a testa direto.
+24. **Fechar a janela de depuração no mesmo dia**, em vez de usar os três dias úteis. Por quê: depois da repetição, não sobrou teste informativo ao nosso alcance. As duas explicações que restam, o modelo de 2025 e os dados do artigo, exigem um acesso que não temos, e esperar não traria evidência nova. Quem tiver esse acesso pode refazer o teste.
+25. **As secundárias da OAB com a reserva, depois de fechar a janela.** Por quê: o desenho e o plano liberam a reserva para as secundárias da OAB quando a etapa direta reproduz ou quando a janela de depuração fecha. Ela fechou, e as secundárias rodaram na ordem do plano, com a reprodução das MCC por embedding por último, até o teto.
 
 Decisões de engenharia, sem efeito nos números:
 
-22. Trabalhar no checkout do branch `experimento-2`, sem worktree.
-23. Contornar o DNS do roteador com um proxy local temporário para o `uv sync`.
-24. Fixar o Python em 3.12.
-25. Contar `tokens_entrada` do mesmo jeito nos dois provedores (a entrada total, com o cache).
-26. Guardar os ids de questão sempre como texto.
-27. Usar um pré-filtro (`quick_ratio`) na deduplicação, com o mesmo resultado.
-28. Avisar quando uma sigla de lei do mapa matéria → lei não tem artigo no snapshot.
-29. Preencher o campo `dataset` do formato do autor por analogia com ele.
-30. Deixar a análise tolerar configurações ausentes na pasta.
-31. Devolver o trecho recuperado no dicionário do agente, mandar sempre `max_tokens` e tirar os `print` de depuração do autor.
-32. Corrigir antes das rodadas as observações menores das revisões que protegiam dinheiro, e estacionar duas (custo zero se a Anthropic não devolver `usage`; erro de permissão ao apagar a trava).
+26. Trabalhar no checkout do branch `experimento-2`, sem worktree.
+27. Contornar o DNS do roteador com um proxy local temporário para o `uv sync`.
+28. Fixar o Python em 3.12.
+29. Contar `tokens_entrada` do mesmo jeito nos dois provedores (a entrada total, com o cache).
+30. Guardar os ids de questão sempre como texto.
+31. Usar um pré-filtro (`quick_ratio`) na deduplicação, com o mesmo resultado.
+32. Avisar quando uma sigla de lei do mapa matéria → lei não tem artigo no snapshot.
+33. Preencher o campo `dataset` do formato do autor por analogia com ele.
+34. Deixar a análise tolerar configurações ausentes na pasta.
+35. Devolver o trecho recuperado no dicionário do agente, mandar sempre `max_tokens` e tirar os `print` de depuração do autor.
+36. Corrigir antes das rodadas as observações menores das revisões que protegiam dinheiro, e estacionar duas (custo zero se a Anthropic não devolver `usage`; erro de permissão ao apagar a trava).
 
 ### 6.3 Pendências do Pedro
 
-- Pôr crédito na OpenAI e rodar a seção 9.
+- Comparar `resultados/livro_caixa.json` com os painéis: a OpenAI deve mostrar ~US$ 16,21 desde o crédito novo e ~US$ 19,50 no total; a Anthropic, ~US$ 20,23.
 - Reconferir as duas amostras de matéria ([`conferencia-materias.md`](conferencia-materias.md) e [`conferencia-materias-rodada1.md`](conferencia-materias-rodada1.md)). Se a rodada 2 for reprovada, é preciso refazer a reclassificação e a OAB H1.
-- Comparar o livro-caixa com os painéis da OpenAI e da Anthropic.
+- Decidir o destino do branch `experimento-2`: merge, PR ou mantê-lo.
+- Decidir se completa `direta-mcc-emb-4omini`, subindo o teto do livro-caixa e a trava do painel (~US$ 1,8; seção 9).
 - Rever as decisões da seção 6.2.
 
 ## 7. O que cada afirmação diz sobre o mapa da residência
 
-O mapa da residência é a tabela "Quando usar cada abordagem" da semana 7, que se lê de cima para baixo até a primeira linha que resolve o caso: só LLM, contexto longo, RAG, memória acoplada, agente gerindo a memória. Este experimento mexe só nas três primeiras linhas. O contexto longo e o RAG simples são memórias passivas: é o código, e não o modelo, que decide o que entra no contexto. Os agentes que gerem a própria memória ficaram fora do escopo, então **nada aqui fala de memória passiva × ativa**. O que o experimento faz é afinar a fronteira entre as linhas "contexto longo" e "RAG", e o que já dá para dizer é isto:
+O mapa da residência é a tabela "Quando usar cada abordagem" da semana 7, que se lê de cima para baixo até a primeira linha que resolve o caso: só LLM, contexto longo, RAG, memória acoplada, agente gerindo a memória. Este experimento mexe só nas três primeiras linhas. O contexto longo e o RAG simples são memórias passivas: é o código, e não o modelo, que decide o que entra no contexto. Os agentes que gerem a própria memória ficaram fora do escopo, então **nada aqui fala de memória passiva × ativa**. O que o experimento faz é afinar a fronteira entre as linhas "contexto longo" e "RAG":
 
-- **H1, achar um trecho preciso.** Com o modelo e os dados do artigo, num contexto três vezes maior que a janela, o RAG BM25 venceu o contexto longo por 14 pontos e custou 11 vezes menos. Isso sustenta a linha do mapa que manda passar do contexto longo ao RAG quando o histórico não cabe. No Experimento 1, com ~10 mil tokens por chamada, o contexto longo acertou tudo; aqui, com ~421 mil e uma janela de 128K, ele perde. Na OAB, com o Haiku e as leis inteiras na janela, não houve diferença detectável de acerto, mas o contexto longo custou 14 vezes mais. Se isso se mantiver nas primárias, o argumento do RAG, quando a lei cabe na janela, é o custo e não o acerto.
-- **H2, aprender com exemplos.** Ainda não há veredito na etapa direta. Na OAB, com o Haiku, o contexto longo ficou à frente na direção do artigo, sem diferença detectável. Numa comparação exploratória, as provas antigas somaram ao Haiku sem memória +4,0 pp [−0,9; +8,9] no contexto longo e +1,3 pp [−4,0; +6,2] no BM25. Uma explicação possível, não testada: nas MCC, o significado de cada rótulo só existe nos exemplos do contexto, e sem eles o modelo não tem como acertar; na OAB, a resposta depende de lei que o modelo já conhece, e as questões antigas são exemplos de outras questões, não do mesmo mapeamento.
-- **A primeira linha do mapa, só o modelo, já resolve boa parte da OAB (exploratório).** O Haiku sem memória acertou 70,7% das 3.377 questões. Nas mesmas questões, ele acerta 15,0 pontos [+9,7; +20,3] a mais que o GPT-4o-mini na amostra da H1, e 5,4 [−0,9; +11,6] a mais no teste da H2, que é do tamanho do ganho de memória do Haiku ali (+4,0 no contexto longo). Se a troca de modelo pesa mais que a memória, só os braços com memória do GPT-4o-mini, pendentes, vão dizer. O que os dados já sustentam é mais modesto: para o Haiku, a memória somou pouco a um piso alto.
+- **H1, achar um trecho preciso: confirmada nas duas etapas.** Com o modelo e os dados do artigo, num contexto três vezes maior que a janela, o RAG BM25 venceu o contexto longo por 14,0 pontos [+2,0; +26,0] e custou 11 vezes menos. Na OAB, venceu por 5,3 pontos [+1,7; +9,0] e custou 8,1 vezes menos. Isso sustenta a linha do mapa que manda passar do contexto longo ao RAG quando é preciso achar um trecho. No Experimento 1, com ~10 mil tokens por chamada, o contexto longo acertou tudo; aqui, com ~421 mil tokens no MH-QA e leis de até 264.994 tokens na OAB, ele perde. Numa comparação exploratória, o BM25 também ficou à frente nas leis que o contexto longo do GPT-4o-mini vê inteiras (+5,7 pp [+1,4; +10,6]), o que sugere que o motivo não é só o histórico não caber na janela. Com o Haiku, o acerto não separou o BM25 do contexto longo (+0,7 pp [−2,7; +4,0], secundária), e o contexto longo custou 14,2 vezes mais: com esse modelo, o que pesa a favor do RAG na OAB é o custo.
+- **H2, aprender com exemplos: inconclusiva nas duas etapas.** Nas MCC, o contexto longo e o BM25 ficaram a 0,2 ponto um do outro, [−2,8; +2,4], e o intervalo não chega à vantagem de 6,6 pontos do artigo. Na OAB, +0,9 pp [−3,6; +5,4], com o BM25 à frente na estimativa. Nenhuma secundária da H2 separa os dois. Este experimento não sustenta a linha do mapa que manda ficar no contexto longo para aprender com exemplos, nem a contraria. O que ele mostra é que, com acerto que não se distingue, o contexto longo custou mais: US$ 4,1068 contra US$ 2,7480 nas MCC, e de 1,5 a 6,6 vezes mais na OAB. Uma leitura possível, não testada: nas MCC, os exemplos mais parecidos com a pergunta, que o BM25 traz, bastam para acertar o rótulo; na OAB, as provas antigas não separaram nenhum braço do GPT-4o-mini do modelo sem memória (exploratório), e, se elas ajudam pouco, sobra pouco para um braço aproveitar melhor que o outro.
+- **A primeira linha do mapa, só o modelo, já resolve boa parte da OAB (exploratório).** O Haiku sem memória acertou 70,7% das 3.377 questões, +11,8 pp [+10,1; +13,5] a mais que o GPT-4o-mini sem memória. A memória somou ao GPT-4o-mini +9,7 pp na H1 com o BM25 ou o embedding, e mesmo assim o melhor braço com memória dele ficou abaixo do Haiku sem memória nas estimativas (64,0% × 69,3% na H1; 67,0% × 69,2% na H2), com intervalos que tocam ou contêm zero. Os dados não separam a troca de modelo da memória; na H1, o intervalo admite no máximo 0,3 ponto a favor do GPT-4o-mini com memória. Para o Haiku, a memória somou de +1,3 a +6,7 pontos a um piso alto, e só dois dos seis intervalos excluem zero.
 
 ## 8. Como rodar
 
@@ -416,45 +495,18 @@ PYTHONUTF8=1 uv run python -m replica.analise resultados/AAAAMMDD-ETAPA   # tabe
 
 ## 9. Como completar
 
-Quando a OpenAI tiver crédito, e antes de 2026-12-20:
+Ficou incompleta só a reprodução das MCC por embedding (`direta-mcc-emb-4omini`), que parou no teto com 266 de 500 perguntas: faltam o resto do NLU e os dois TREC. Ela não muda nenhum veredito, mas sem ela a média do embedding nas MCC e a secundária da H2 direta com embedding ficam sem teste. Completá-la custa ~US$ 1,8 na OpenAI e é decisão do Pedro, antes de 2026-12-20:
 
-0. **Antes.** Sem `--usar-reserva`, o teto do livro-caixa na OpenAI é US$ 15,50, e restam US$ 12,21 (15,50 − 3,29). Pela projeção do piloto, o que falta das primárias (as MCC da etapa direta e as quatro da OAB), mais a reprodução do embedding no MH-QA, custa ~US$ 11,3 a 12: a projeção do contexto longo na H1 da OAB supõe todos os contextos do tamanho do primeiro, que é menor que os do CPC, do CC e da CF, e por isso sai baixa. A margem é de menos de US$ 1. Se uma primária da OAB parar com `parada: teto`, a saída é liberar a reserva (`--usar-reserva`) para terminá-la; o plano não prevê a reserva para isso, então a decisão é do Pedro. Com a reserva, o teto passa a US$ 19,50, e para que ele, e não o saldo, seja o limite, o saldo pré-pago precisa cobrir pelo menos US$ 16,21 (19,50 − 3,29). A projeção do piloto para todas as configurações da OpenAI foi de US$ 19,62, acima do teto: o que não couber sai do fim da fila, a reprodução das MCC por embedding primeiro, e o documento registra. Confira também que não existe `resultados/.rodador.lock` nem rodador vivo.
-1. **Terminar a etapa direta.** As duas do MH-QA estão completas e são puladas; o comando refaz o erro de API do contexto longo das MCC e completa o resto. Repita até `erros_api=0`.
+1. Subir o teto da OpenAI no livro-caixa (`TETOS` em `replica/config.py`) e a trava do painel, e conferir que o saldo pré-pago cobre o gasto.
+2. Conferir que não existe `resultados/.rodador.lock` nem rodador vivo.
+3. Rodar e analisar. A retomada só responde as perguntas que faltam; repita até `erros_api=0`.
 
    ```
-   PYTHONUTF8=1 uv run python -m replica.rodar direta-mhqa-lc-4omini direta-mhqa-bm25-4omini direta-mcc-lc-4omini direta-mcc-bm25-4omini direta-mhqa-emb-4omini --rodada resultados/20261110-direta
+   PYTHONUTF8=1 uv run python -m replica.rodar direta-mcc-emb-4omini --rodada resultados/20261110-direta --usar-reserva
    PYTHONUTF8=1 uv run python -m replica.analise resultados/20261110-direta
    ```
 
-   Aplique a regra de reprodução: se os números do artigo caírem dentro do intervalo nas quatro configurações primárias da etapa direta (o MH-QA já reproduz; faltam as médias das MCC no contexto longo e no BM25), a reserva fica liberada. Se não, abre a janela de depuração da Task 13 do plano (até US$ 4, com `--usar-reserva`).
-2. **As quatro primárias da OAB.**
-
-   ```
-   PYTHONUTF8=1 uv run python -m replica.rodar oab-h1-lc-4omini oab-h1-bm25-4omini oab-h2-lc-4omini oab-h2-bm25-4omini --rodada resultados/20261110-oab
-   ```
-
-3. **As secundárias da OpenAI e as do Haiku com embedding.** Acrescente `--usar-reserva` só se a etapa direta reproduziu ou se a janela de depuração fechou. Pela projeção do piloto, as duas do Haiku com embedding gastam ~US$ 1,94 na Anthropic (0,2850 + 1,6506), dentro do que resta.
-
-   ```
-   PYTHONUTF8=1 uv run python -m replica.rodar oab-h1-emb-4omini oab-h1-emb-haiku oab-h1-bm25-4omini-k2 oab-h1-bm25-4omini-k5 oab-h1-bm25-4omini-k20 oab-h1corpus-bm25-4omini oab-h2-emb-4omini oab-h2-emb-haiku --rodada resultados/20261110-oab
-   ```
-
-4. **A última da fila**, nas mesmas condições de `--usar-reserva`:
-
-   ```
-   PYTHONUTF8=1 uv run python -m replica.rodar direta-mcc-emb-4omini --rodada resultados/20261110-direta
-   ```
-
-5. **Analisar as duas pastas.**
-
-   ```
-   PYTHONUTF8=1 uv run python -m replica.analise resultados/20261110-direta
-   PYTHONUTF8=1 uv run python -m replica.analise resultados/20261110-oab
-   ```
-
-6. **Recalcular os pares exploratórios.** As comparações secundárias contexto longo × RAG (embedding e BM25) já saem da `tabela.md`, seção "Comparações secundárias"; a ablação de k e o corpus inteiro saem como acurácias na seção "Secundárias" e no gráfico. Só os pares exploratórios (memória × sem memória, e GPT-4o-mini × Haiku sem memória) são calculados à parte, como na seção 3.6, agora também com os braços do GPT-4o-mini.
-7. **Atualizar este documento:** trocar cada **pendente** pelos números das tabelas; dar os vereditos da H2 direta, da H1 OAB e da H2 OAB; fazer o teste de reprodução das MCC contra 82,0 e 82,4; reler a seção 7 com as primárias.
-8. **Commitar por caminho, nunca com `git add -A`:** `git add resultados/20261110-direta resultados/20261110-oab resultados/livro_caixa.json docs/replicacao-memoryagentbench.md`.
+4. Atualizar neste documento a reprodução das MCC por embedding e a secundária da H2 direta com embedding (seções 1, 4.1, 5.2 e 6.1), e commitar por caminho, nunca com `git add -A`: `git add resultados/20261110-direta resultados/livro_caixa.json docs/replicacao-memoryagentbench.md`.
 
 ## Referências
 
