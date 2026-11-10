@@ -18,7 +18,10 @@ from replica.config import FONTE_MHQA, MCC_FONTES
 
 
 def _linha(nome, fonte, i, acerto, erro=None, entrada=1000, flex=None):
-    metricas = {} if flex is None else {"exact_match_flexivel": flex}
+    # nas MCC, `acerto` é o exact_match estrito do autor; `flex` é a leitura flexível de "label: N"
+    metricas = {"exact_match": acerto}
+    if flex is not None:
+        metricas["exact_match_flexivel"] = flex
     return {
         "configuracao": nome, "fonte": fonte, "contexto_id": 0, "pergunta_id": f"{fonte}:{i}", "ano": None,
         "consulta": "Pergunta com acentuação: ção É", "gabarito": ["x"], "saida": "x", "acerto": acerto,
@@ -41,9 +44,10 @@ def _linhas_da_secao(md, titulo):
     return [[c.strip() for c in l.strip()[1:-1].split("|")] for l in linhas]
 
 
-def _gravar(pasta, nome, fonte, acertos, **kw):
+def _gravar(pasta, nome, fonte, acertos, flexiveis=None, **kw):
     for i, a in enumerate(acertos):
-        anexar_jsonl(pasta / f"{nome}.jsonl", _linha(nome, fonte, i, a, **kw))
+        flex = None if flexiveis is None else flexiveis[i]
+        anexar_jsonl(pasta / f"{nome}.jsonl", _linha(nome, fonte, i, a, flex=flex, **kw))
 
 
 def test_bootstrap_pareado_contem_a_diferenca():
@@ -91,10 +95,11 @@ def _rodada_completa(pasta):
     # H1 direta: LC 40%, BM25 60% (100 perguntas)
     _gravar(pasta, "direta-mhqa-lc-4omini", FONTE_MHQA, [True] * 40 + [False] * 60)
     _gravar(pasta, "direta-mhqa-bm25-4omini", FONTE_MHQA, [True] * 60 + [False] * 40)
-    # H2 direta: 5 fontes com 100 cada; LC 80%, BM25 70%
+    # H2 direta: 5 fontes com 100 cada. Leitura flexível: LC 80%, BM25 70%. Estrito ("label: N" vira erro):
+    # LC 0%, BM25 0%, como no piloto; com o estrito não haveria veredito.
     for f in MCC_FONTES:
-        _gravar(pasta, "direta-mcc-lc-4omini", f, [True] * 80 + [False] * 20, flex=True)
-        _gravar(pasta, "direta-mcc-bm25-4omini", f, [True] * 70 + [False] * 30, flex=True)
+        _gravar(pasta, "direta-mcc-lc-4omini", f, [False] * 100, flexiveis=[True] * 80 + [False] * 20)
+        _gravar(pasta, "direta-mcc-bm25-4omini", f, [False] * 100, flexiveis=[True] * 70 + [False] * 30)
     # OAB
     # H1 OAB: o RAG perde de 10 pontos (contrariada); H2 OAB: diferença de 2 pontos (inconclusiva)
     _gravar(pasta, "oab-h1-lc-4omini", "oab_h1", [True] * 60 + [False] * 40, entrada=100_000)
@@ -131,6 +136,13 @@ def test_relatorio_tem_as_quatro_primarias(tmp_path):
     assert por[("direta-mcc-lc-4omini", MCC_FONTES[0])][5] == "não"  # 80% contra 93
     assert por[("direta-mhqa-lc-4omini", FONTE_MHQA)][5] == "sim"  # 40% [31,50] contém 43
     assert por[("direta-mhqa-bm25-4omini", FONTE_MHQA)][5] == "sim"  # 60% [50,70] contém 56
+    # coluna do estrito (literal do README): 0% nas MCC, vazia nas demais
+    assert por[("direta-mcc-lc-4omini", "média MCC")][6] == "0.0% [0.0%; 0.0%]"
+    assert por[("direta-mcc-bm25-4omini", MCC_FONTES[0])][6] == "0.0% [0.0%; 0.0%]"
+    assert por[("direta-mhqa-lc-4omini", FONTE_MHQA)][6] == ""
+    assert "Estrito (literal do README)" in md
+    assert "leitura flexível de `label:`" in md  # nota sob as primárias
+    assert "Acurácia flexível" not in md  # a tabela secundária de flexíveis foi removida
     assert por[("direta-mhqa-emb-4omini", NAO_RODADA)][0] == "direta-mhqa-emb-4omini"
 
 
@@ -185,7 +197,7 @@ def test_resposta_vazia_conta_como_recusa_e_nao_como_erro_de_api(tmp_path):
 def test_ic_das_mcc_e_estratificado_em_todas_as_secoes(tmp_path):
     # três fontes com 100% e duas com 0%: estratificado, a acurácia é 60% e o intervalo não tem largura
     for k, f in enumerate(MCC_FONTES):
-        _gravar(tmp_path, "direta-mcc-emb-4omini", f, [k < 3] * 20)
+        _gravar(tmp_path, "direta-mcc-emb-4omini", f, [False] * 20, flexiveis=[k < 3] * 20)
     md = gerar_relatorio(tmp_path)
     sec = {c[0]: c for c in _linhas_da_secao(md, "Secundárias")}
     assert sec["direta-mcc-emb-4omini"][2] == "60.0% [60.0%; 60.0%]"
@@ -205,3 +217,12 @@ def test_grafico_e_main(tmp_path, capsys):
     saida = capsys.readouterr().out
     assert "tabela.md" in saida and "qualidade_tokens.png" in saida
     assert (tmp_path / "tabela.md").exists() and png.exists()
+
+
+def test_mcc_secundaria_usa_flexivel_e_erro_continua_errado(tmp_path):
+    _gravar(tmp_path, "direta-mcc-emb-4omini", MCC_FONTES[0], [False] * 4, flexiveis=[True] * 4)
+    anexar_jsonl(tmp_path / "direta-mcc-emb-4omini.jsonl",
+                 _linha("direta-mcc-emb-4omini", MCC_FONTES[0], 4, False, erro="[erro: api]", flex=True))
+    md = gerar_relatorio(tmp_path)
+    sec = {c[0]: c for c in _linhas_da_secao(md, "Secundárias")}
+    assert sec["direta-mcc-emb-4omini"][2].startswith("80.0%")  # 4 de 5; o erro vale como errado

@@ -92,11 +92,19 @@ def carregar_rodada(pasta: Path) -> dict[str, list[dict]]:
 
 
 def _acerto(linha: dict) -> bool:
-    return bool(linha.get("acerto")) and not linha.get("erro")
+    """Acerto primário: nas MCC (`icl*`) a leitura flexível de `label:`, nas demais o `acerto` gravado.
+    Linha com erro vale como errada. O prompt do autor manda responder "label: N" e o `exact_match`
+    estrito dá ~0 para qualquer agente; por isso o estrito fica ao lado (`_acerto_estrito`)."""
+    if linha.get("erro"):
+        return False
+    if str(linha.get("fonte", "")).startswith("icl"):
+        return bool((linha.get("metricas") or {}).get("exact_match_flexivel"))
+    return bool(linha.get("acerto"))
 
 
-def _acerto_flexivel(linha: dict) -> bool:
-    return bool((linha.get("metricas") or {}).get("exact_match_flexivel")) and not linha.get("erro")
+def _acerto_estrito(linha: dict) -> bool:
+    """`exact_match` estrito do autor (o literal do README) nas MCC; erro vale como errado."""
+    return bool((linha.get("metricas") or {}).get("exact_match")) and not linha.get("erro")
 
 
 def _estratos_mcc(linhas: list[dict]) -> list[str] | None:
@@ -106,10 +114,9 @@ def _estratos_mcc(linhas: list[dict]) -> list[str] | None:
     return None
 
 
-def _acuracia_ic(linhas: list[dict], flexivel: bool = False) -> tuple[float, float, float]:
+def _acuracia_ic(linhas: list[dict]) -> tuple[float, float, float]:
     """Acurácia com IC; nas MCC o bootstrap é sempre estratificado por `fonte`, em todas as seções."""
-    f = _acerto_flexivel if flexivel else _acerto
-    return intervalo_acuracia([f(l) for l in linhas], estratos=_estratos_mcc(linhas))
+    return intervalo_acuracia([_acerto(l) for l in linhas], estratos=_estratos_mcc(linhas))
 
 
 def _por_pergunta(linhas: list[dict]) -> dict[str, dict]:
@@ -171,6 +178,9 @@ def _secao_primarias(dados: dict[str, list[dict]]) -> list[str]:
            "Contexto longo × RAG BM25, GPT-4o-mini, perguntas pareadas por `pergunta_id`. Diferença = "
            "RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (IC de 95%); linhas com erro "
            "contam como erradas. H1 espera diferença positiva (RAG vence), H2 negativa (contexto longo vence).",
+           "", "Nas MCC, a acurácia é a leitura flexível de `label:`; o `exact_match` estrito do README aparece "
+           "ao lado (seção de reprodução). Com o prompt do autor, toda resposta obediente vem como "
+           "\"label: N\", e o estrito dá ~0 para qualquer agente (ver Decisões do piloto no desenho).",
            ""]
     out += _tabela(["Comparação", "n", "Contexto longo", "RAG BM25", "Diferença", "Veredito", "Nota"], linhas)
     if notas:
@@ -182,11 +192,12 @@ def _secao_reproducao(dados: dict[str, list[dict]]) -> list[str]:
     out = ["## Reprodução (etapa direta)", "",
            "Número do artigo (em %) contra a nossa acurácia com IC de 95% (bootstrap). "
            "Reproduz se o número do artigo cai dentro do intervalo. Média MCC: bootstrap estratificado por "
-           "dataset.", ""]
-    linhas, flex = [], []
+           "dataset. Nas MCC, \"Nossa acurácia\" é a leitura flexível de `label:` e \"Reproduz\" a usa; a última "
+           "coluna é o `exact_match` estrito (sem veredito).", ""]
+    linhas = []
     for cfg in (c for c in CONFIGURACOES if c.etapa == "direta"):
         if cfg.nome not in dados:
-            linhas.append([cfg.nome, NAO_RODADA, "", "", "", ""])
+            linhas.append([cfg.nome, NAO_RODADA, "", "", "", "", ""])
             continue
         todas = dados[cfg.nome]
         fontes = [FONTE_MHQA] if cfg.conjunto == FONTE_MHQA else list(MCC_FONTES)
@@ -199,23 +210,20 @@ def _secao_reproducao(dados: dict[str, list[dict]]) -> list[str]:
                           "estratificar", NUMEROS_ARTIGO.get(("mcc", cfg.agente))))
         for rotulo, ls_f, modo, numero in itens:
             if not ls_f:
-                linhas.append([cfg.nome, rotulo, NAO_RODADA, "", "", ""])
+                linhas.append([cfg.nome, rotulo, NAO_RODADA, "", "", "", ""])
                 continue
             est = [l["fonte"] for l in ls_f] if modo else None
             acc, li, ls = intervalo_acuracia([_acerto(l) for l in ls_f], estratos=est)
+            estrito = ""
+            if cfg.conjunto == "mcc":
+                estrito = _ic(*intervalo_acuracia([_acerto_estrito(l) for l in ls_f], estratos=est))
             if numero is None:
-                linhas.append([cfg.nome, rotulo, str(len(ls_f)), _ic(acc, li, ls), "", ""])
+                linhas.append([cfg.nome, rotulo, str(len(ls_f)), _ic(acc, li, ls), "", "", estrito])
             else:
                 linhas.append([cfg.nome, rotulo, str(len(ls_f)), _ic(acc, li, ls), f"{numero:.1f}%",
-                               "sim" if reproduz(numero, li, ls) else "não"])
-            if cfg.conjunto == "mcc":
-                accf, lif, lsf = intervalo_acuracia([_acerto_flexivel(l) for l in ls_f], estratos=est)
-                flex.append([cfg.nome, rotulo, _ic(accf, lif, lsf)])
-    out += _tabela(["Configuração", "Fonte", "n", "Nossa acurácia", "Artigo", "Reproduz"], linhas)
-    if flex:
-        out += ["", "Secundário, sem veredito: acurácia com leitura flexível de `label:` nas MCC "
-                "(`exact_match_flexivel`; a primária usa o `exact_match` estrito do autor).", ""]
-        out += _tabela(["Configuração", "Fonte", "Acurácia flexível"], flex)
+                               "sim" if reproduz(numero, li, ls) else "não", estrito])
+    out += _tabela(["Configuração", "Fonte", "n", "Nossa acurácia", "Artigo", "Reproduz",
+                    "Estrito (literal do README)"], linhas)
     return out + [""]
 
 
