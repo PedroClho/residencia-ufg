@@ -116,7 +116,7 @@ docs/conferencia-materias.md, docs/replicacao-memoryagentbench.md
   - `AUTOR_COMMIT = "538026089d1a8a8eff05121d0db89b388f360eba"`, `HF_DATASET = "ai-hyz/MemoryAgentBench"`, `HF_REVISAO = "7ea066982b140a19337e17e60d45d4076e042faf"`
   - `FONTE_MHQA = "ruler_qa2_421K"`
   - `MCC_FONTES = ("icl_banking77_5900shot_balance", "icl_clinic150_7050shot_balance", "icl_nlu_8296shot_balance", "icl_trec_coarse_6600shot_balance", "icl_trec_fine_6400shot_balance")`
-  - `NUMEROS_ARTIGO: dict[tuple[str, str], float]`, com chave `(fonte ou "mcc", agente)` e os valores do item 6 das Correções
+  - `NUMEROS_ARTIGO: dict[tuple[str, str], float]`, com chave `(fonte ou "mcc", agente)` e os valores do item 6 das Correções: 3 do MH-QA, 3 da média MCC e 15 por fonte MCC. `agente` usa o vocabulário da Task 9: `"contexto_longo"`, `"rag_bm25"` ou `"rag_embedding"`.
   - `SEMENTE = 42`, `PROJETO_ATLAS = "gqnejwbuloklbelsufnj"`
 - Produces, em `replica/livro_caixa.py`:
   - `class LimiteDeGasto(Exception)`
@@ -221,8 +221,9 @@ git commit -m "feat: andaime, configuração e livro-caixa com teto de gasto"
 - Consumes: `LivroCaixa`, `LimiteDeGasto`, as funções `custo_*` e `config.PRECOS`/`PROVEDOR`/`FATOR_TOKENS_HAIKU` (Task 1)
 - Produces:
   - `@dataclass class Resposta`, com `texto: str`, `tokens_entrada: int`, `tokens_cacheados: int`, `tokens_escritos_cache: int`, `tokens_saida: int`, `custo_usd: float` e `erro: str | None = None`.
-  - `class ClienteOpenAI(modelo: str, livro: LivroCaixa, temperatura: float | None = 0.7, bruto=None, dormir=time.sleep)`
-  - `class ClienteAnthropic(modelo: str, livro: LivroCaixa, bruto=None, dormir=time.sleep)`
+  - `class ClienteOpenAI(modelo: str, livro: LivroCaixa, temperatura: float | None = 0.7, bruto=None, dormir=time.sleep, erros_de_taxa: tuple[type[Exception], ...] | None = None)`
+  - `class ClienteAnthropic(modelo: str, livro: LivroCaixa, bruto=None, dormir=time.sleep, erros_de_taxa: tuple[type[Exception], ...] | None = None)`
+  - Em `erros_de_taxa`, `None` significa `(openai.RateLimitError,)` ou `(anthropic.RateLimitError,)`.
   - Os dois expõem `conversar(system: str | None, mensagem: str, max_tokens: int, prefixo_cacheavel: str | None = None) -> Resposta`. O texto do usuário é sempre `(prefixo_cacheavel or "") + mensagem`.
   - `class ClienteEmbeddings(livro: LivroCaixa, modelo: str = MODELO_EMBEDDING, bruto=None, lote: int = 256)` com `embutir(textos: list[str]) -> numpy.ndarray`, de forma `(n, d)`.
   - `fabricar_cliente(modelo: str, livro: LivroCaixa, temperatura: float | None) -> ClienteOpenAI | ClienteAnthropic`
@@ -621,7 +622,7 @@ Os templates imitam a estrutura dos do autor: `ruler_qa` para a H1 e `in_context
     - Direito Processual Civil → `("CPC",)`
     - Direito Penal → `("CP",)`
     - Direito Processual Penal → `("CPP",)`
-    - Direito do Trabalho e Direito Processual do Trabalho → `("CLT",)`
+    - Direito do Trabalho → `("CLT",)` e Direito Processual do Trabalho → `("CLT",)`, duas chaves separadas
     - Direito Eleitoral → `("Lei 4.737", "Lei 9.504", "Lei 9.096", "LC 64")`
     - Direito Previdenciário → `("Lei 8.212", "Lei 8.213", "LOAS")`
     - Direito Financeiro → `("LRF", "Lei 4.320")`
@@ -635,6 +636,7 @@ Os templates imitam a estrutura dos do autor: `ruler_qa` para a H1 e `in_context
   - `montar_h1(amostra, materias, artigos) -> list[dict]`:
     - Uma linha no formato do autor por tupla de leis, na ordem de `MATERIA_PARA_LEIS`.
     - `{"context": "\n\n".join(content dos artigos ordenados), "questions": [formatar_questao(q)], "answers": [[gabarito]], "metadata": {"source": f"oab_h1_{i:02d}", "qa_pair_ids": [ids], "anos": [anos], "leis": list(siglas)}}`
+  - Todos os montadores abaixo emitem linhas no mesmo formato: `{"context", "questions", "answers", "metadata": {"source", "qa_pair_ids", "anos"}}`. A H1 acrescenta `"leis"`. É o que `conjuntos.carregar_oab` (Task 5) lê.
   - `montar_h1_corpus(amostra, artigos) -> list[dict]`: uma linha só, com todas as leis de `MATERIA_PARA_LEIS` e `source` `"oab_h1_corpus"`.
   - `separar_h2(qs: list[dict]) -> tuple[list[dict], list[dict]]`:
     - Teste: válidas de 2024 e 2025.
@@ -760,7 +762,7 @@ git commit -m "feat: reclassificação de matéria das provas de 2018 a 2023"
 - Produces, em `replica/rodar.py`:
   - `@dataclass(frozen=True) class Configuracao`, com os campos `nome`, `etapa`, `hipotese`, `papel`, `agente` (`"contexto_longo" | "rag_bm25" | "rag_embedding" | "sem_memoria"`), `modelo`, `conjunto`, `chunk_size`, `retrieve_num`, `input_length_limit`, `buffer_length`, `generation_max_length`, `context_max_length` e `temperatura`.
   - `CONFIGURACOES: list[Configuracao]`: a tabela abaixo, nesta ordem, que é a ordem de prioridade.
-  - `agent_config(cfg) -> dict`, com os `agent_name` do autor: `f"Long_context_agent_{modelo}"`, `"Simple_rag_bm25"` e `"Embedding_rag_text_embedding_3_small"`.
+  - `agent_config(cfg) -> dict`, com os `agent_name` do autor: `f"Long_context_agent_{modelo}"`, `"Simple_rag_bm25"` e `"Embedding_rag_text_embedding_3_small"`. Mais `model`, `temperature`, `input_length_limit`, `buffer_length`, `output_dir` (o `__init__` do autor lê a chave; qualquer texto serve) e, nos RAG, `retrieve_num`.
   - `dataset_config(cfg, fonte) -> dict` (`sub_dataset=fonte`, `chunk_size`, `generation_max_length`, `context_max_length`, `dataset`).
   - `carregar_conjunto(cfg) -> list[Contexto]`: `ruler_qa2_421K` → `carregar_autor([FONTE_MHQA])`; `mcc` → `carregar_autor(MCC_FONTES)`; `oab_*` → `carregar_oab(cfg.conjunto.removeprefix("oab_"))`.
   - `rodar_configuracao(cfg, contextos, fabricar, embeddings, pasta: Path, limite_perguntas: int | None = None) -> dict`:
