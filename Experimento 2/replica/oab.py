@@ -213,7 +213,7 @@ def main(dados: Path = DADOS) -> int:
     print(f"separar_h2 (deduplicação incluída): {time.time() - t0:.1f}s; "
           f"memória {len(memoria)} questões, teste {len(teste)}")
     conjuntos["h2"] = montar_h2(memoria, teste)
-    conjuntos["sem_memoria"] = montar_sem_memoria(teste)
+    conjuntos["sem_memoria"] = montar_sem_memoria(qs)
 
     arq_materias = dados / "materias_2018_2023.json"
     if arq_materias.exists():

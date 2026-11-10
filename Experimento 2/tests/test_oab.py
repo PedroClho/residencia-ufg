@@ -165,3 +165,20 @@ def test_sem_memoria():
     assert linha["context"] == "" and len(linha["questions"]) == 1
     assert linha["metadata"]["source"] == "oab_sem_memoria"
     assert LETRAS == ("A", "B", "C", "D")
+
+
+def test_main_sem_memoria_tem_todas_as_validas_e_h2_so_teste(tmp_path):
+    from replica.arquivos import gravar_json, ler_json
+    from replica.oab import main
+    qs = [_q("2019-01_1", ano=2019, exam="2019-01"), _q("2022-01_1", ano=2022, exam="2022-01"),
+          _q("2022-01_2", ano=2022, exam="2022-01", num=2, n_alt=3),
+          _q("2024-01_1", ano=2024), _q("2025-01_1", ano=2025)]
+    gravar_json(tmp_path / "atlas" / "questoes_oab.json", qs)
+    gravar_json(tmp_path / "atlas" / "law_articles.json",
+                [{"id": "1", "law_sigla": "CC", "content": "Art. 1º a"}])
+    assert main(dados=tmp_path) == 0
+    (sem,) = ler_json(tmp_path / "oab" / "sem_memoria.json")
+    assert sem["metadata"]["qa_pair_ids"] == ["2019-01_1", "2022-01_1", "2024-01_1", "2025-01_1"]
+    (h2,) = ler_json(tmp_path / "oab" / "h2.json")
+    assert h2["metadata"]["qa_pair_ids"] == ["2024-01_1", "2025-01_1"]
+    assert not (tmp_path / "oab" / "h1.json").exists()
