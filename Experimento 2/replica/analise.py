@@ -99,6 +99,19 @@ def _acerto_flexivel(linha: dict) -> bool:
     return bool((linha.get("metricas") or {}).get("exact_match_flexivel")) and not linha.get("erro")
 
 
+def _estratos_mcc(linhas: list[dict]) -> list[str] | None:
+    """Estratos (a `fonte`) se as linhas são de uma configuração MCC; `None` nas demais."""
+    if any(l["fonte"] in MCC_FONTES for l in linhas):
+        return [l["fonte"] for l in linhas]
+    return None
+
+
+def _acuracia_ic(linhas: list[dict], flexivel: bool = False) -> tuple[float, float, float]:
+    """Acurácia com IC; nas MCC o bootstrap é sempre estratificado por `fonte`, em todas as seções."""
+    f = _acerto_flexivel if flexivel else _acerto
+    return intervalo_acuracia([f(l) for l in linhas], estratos=_estratos_mcc(linhas))
+
+
 def _por_pergunta(linhas: list[dict]) -> dict[str, dict]:
     return {str(l["pergunta_id"]): l for l in linhas}
 
@@ -140,10 +153,16 @@ def _secao_primarias(dados: dict[str, list[dict]]) -> list[str]:
         estratos = [lc[i]["fonte"] for i in ids] if titulo == "H2 direta" else None
         # Diferença média(RAG) − média(LC). Na H2 o artigo diz LC > RAG, ou seja, diferença negativa.
         d, li, ls = bootstrap_pareado(a, b, estratos)
-        _, la, sa = intervalo_acuracia(a)
-        _, lb, sb = intervalo_acuracia(b)
+        _, la, sa = intervalo_acuracia(a, estratos=estratos)
+        _, lb, sb = intervalo_acuracia(b, estratos=estratos)
+        total = len(set(lc) | set(rag))
+        api = sum(1 for l in (*dados[nome_lc], *dados[nome_rag])
+                  if l.get("erro") and l.get("erro") not in ERROS_FINAIS)
+        nota = f"(parcial: {len(ids)} de {total})" if len(ids) < total or api else ""
+        if api and len(ids) == total:
+            nota = f"(parcial: {len(ids)} de {total}, {api} erro(s) de API)"
         linhas.append([titulo, str(len(ids)), _ic(np.mean(a), la, sa), _ic(np.mean(b), lb, sb),
-                       _ic_dif(d, li, ls), veredito(li, ls, sentido), ""])
+                       _ic_dif(d, li, ls), veredito(li, ls, sentido), nota])
         fora_lc, fora_rag = len(lc) - len(ids), len(rag) - len(ids)
         if fora_lc or fora_rag:
             notas.append(f"- {titulo}: {fora_lc} pergunta(s) de `{nome_lc}` e {fora_rag} de `{nome_rag}` "
@@ -218,7 +237,7 @@ def _secao_secundarias(dados: dict[str, list[dict]]) -> list[str]:
         if not ls_n:
             linhas.append([n, "0", "sem linhas"])
             continue
-        acc, li, ls = intervalo_acuracia([_acerto(l) for l in ls_n])
+        acc, li, ls = _acuracia_ic(ls_n)
         linhas.append([n, str(len(ls_n)), _ic(acc, li, ls)])
     return out + _tabela(["Configuração", "n", "Acurácia"], linhas) + [""]
 
@@ -265,7 +284,7 @@ _CONTEXTOS_LONGOS = [("oab-h1-lc-4omini", "Contexto longo, GPT-4o-mini", "s"),
 
 
 def _ponto(linhas: list[dict]) -> tuple[float, float, float, float]:
-    acc, li, ls = intervalo_acuracia([_acerto(l) for l in linhas])
+    acc, li, ls = _acuracia_ic(linhas)
     x = float(np.mean([l.get("tokens_entrada", 0) for l in linhas]))
     return x, acc, acc - li, ls - acc
 
