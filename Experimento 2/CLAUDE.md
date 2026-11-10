@@ -30,7 +30,7 @@ replica/templates_oab.py, snapshot.py, oab.py, reclassificar.py   lado OAB
 replica/avaliacao.py, rodar.py, analise.py   acerto, rodador/piloto/portão, bootstrap
 tests/                   um arquivo por módulo, fakes em conftest.py (tudo offline)
 dados/                   snapshot do Atlas, fora do git, exceto dados/manifesto.json
-resultados/              rodadas e livro_caixa.json (versionados); .rodador.lock (trava, fora do git)
+resultados/              rodadas, depuração e livro_caixa.json (versionados); .rodador.lock (trava, fora do git)
 docs/                    conferencia-materias.md, replicacao-memoryagentbench.md, superpowers/
 ```
 
@@ -130,7 +130,14 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
 - **O saldo pré-pago da OpenAI acaba antes da trava do painel:** em 2026-11-10 a API devolveu 429 "You
   have no credits remaining" com US$ 3,29 gastos (trava em US$ 20). Desde `fff61c6` o cliente casa esse
   texto e para com `LimiteDoPainel`; antes, esperava 5 × 60 s por pergunta. Confira o saldo, não só a
-  trava, antes de uma rodada da OpenAI.
+  trava, antes de uma rodada da OpenAI. Com US$ 17 a mais, as rodadas foram até o teto (US$ 19,50) no mesmo
+  dia; só `direta-mcc-emb-4omini` ficou parcial (266 de 500, `parada: teto`).
+- **A média MCC no contexto longo não reproduz o artigo (77,0% contra 82,0) e não é bug:** a requisição é
+  igual byte a byte à que o código do autor mandaria (contexto, templates, parâmetros), e uma repetição do TREC
+  fine (52 contra 56 de 100) descarta o ruído da temperatura. Sobram o modelo servido hoje e os dados do
+  artigo (seção da janela de depuração no documento). Não "conserte" o agente atrás desse número.
+- **`resultados/20261110-depuracao/`** é a repetição do TREC fine da janela de depuração (só essa fonte, 100
+  perguntas). O `analise` ali sai parcial de propósito; o livro-caixa e a conferência contam essas linhas.
 - **Nunca `git add -A`:** `../Experimento 1/RESIDENCIA/` e `../Experimento 1/artigos/` (PDFs) estão
   fora do git de propósito, e `-A` pega a árvore inteira, mesmo rodado daqui. Commite por caminho.
 - **Limite da Anthropic:** 2 milhões de tokens de entrada por minuto (conferido em 2026-11-10); o
