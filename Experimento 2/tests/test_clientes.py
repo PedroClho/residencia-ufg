@@ -136,3 +136,32 @@ def test_embeddings_fecham_o_lote_por_tokens_e_truncam(livro, fake_openai):
 def test_fabricar_cliente_escolhe_provedor(livro):
     assert isinstance(fabricar_cliente("gpt-4o-mini", livro, 0.7), ClienteOpenAI)
     assert isinstance(fabricar_cliente("claude-haiku-5-5", livro, 0.7), ClienteAnthropic)
+
+
+def test_prefixo_identico_entre_chamadas(livro, fake_openai, fake_anthropic):
+    prefixo = "CONTEXTO LONGO\n"
+    co = ClienteOpenAI("gpt-4o-mini", livro, bruto=fake_openai)
+    ca = ClienteAnthropic("claude-haiku-5-5", livro, bruto=fake_anthropic)
+    for pergunta in ("primeira?", "segunda?"):
+        co.conversar("SYS", pergunta, 20, prefixo_cacheavel=prefixo)
+        ca.conversar("SYS", pergunta, 20, prefixo_cacheavel=prefixo)
+    u1, u2 = (kw["messages"][1]["content"] for kw in fake_openai.chamadas)
+    assert u1.startswith(prefixo) and u2.startswith(prefixo)
+    a1, a2 = (kw["messages"][0]["content"][0] for kw in fake_anthropic.chamadas)
+    assert a1 == a2 and a1["text"] == prefixo
+
+
+def test_anthropic_prefixo_vazio_conta_como_sem_prefixo(livro, fake_anthropic):
+    ClienteAnthropic("claude-haiku-5-5", livro, bruto=fake_anthropic).conversar("S", "pergunta", 20, prefixo_cacheavel="")
+    assert fake_anthropic.chamadas[0]["messages"] == [{"role": "user", "content": "pergunta"}]
+
+
+def test_embeddings_texto_vazio_vira_espaco(livro, fake_openai):
+    m = ClienteEmbeddings(livro, bruto=fake_openai).embutir(["a", "", "  \n", "b"])
+    assert m.shape == (4, 8)
+    assert fake_openai.chamadas_embeddings[0]["input"] == ["a", " ", " ", "b"]
+
+
+def test_embeddings_lista_vazia_nao_chama_api(livro, fake_openai):
+    m = ClienteEmbeddings(livro, bruto=fake_openai).embutir([])
+    assert m.shape == (0, 0) and fake_openai.chamadas_embeddings == []

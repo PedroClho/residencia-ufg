@@ -102,7 +102,7 @@ class _ClienteBase:
         prefixo = prefixo_cacheavel or ""
         self.livro.autorizar(self.provedor, self._custo_maximo(system or "", prefixo, mensagem, max_tokens))
         try:
-            return self._executar(system, prefixo, mensagem, max_tokens, prefixo_cacheavel is not None)
+            return self._executar(system, prefixo, mensagem, max_tokens, bool(prefixo_cacheavel))
         except LimiteDeGasto:
             raise
         except Exception as e:
@@ -226,7 +226,13 @@ class ClienteEmbeddings:
         return self._bruto
 
     def _preparar(self, texto: str) -> tuple[str, int]:
-        """Trunca em 8.191 tokens (limite do modelo) e devolve (texto, tokens)."""
+        """Trunca em 8.191 tokens (limite do modelo) e devolve (texto, tokens).
+
+        Texto vazio ou só com espaços vira um espaço (a API recusa entrada vazia).
+        """
+        if not texto.strip():
+            print("[aviso] texto vazio trocado por um espaço no embedding", file=sys.stderr)
+            return " ", 1
         enc = _codificador_emb()
         tokens = enc.encode(texto, disallowed_special=())
         if len(tokens) > LIMITE_TOKENS_EMBEDDING:
@@ -244,6 +250,8 @@ class ClienteEmbeddings:
         return [d.embedding for d in r.data]
 
     def embutir(self, textos: list[str]) -> np.ndarray:
+        if not textos:
+            return np.zeros((0, 0), dtype=np.float32)
         vetores: list[list[float]] = []
         lote: list[str] = []
         tokens_lote = 0
