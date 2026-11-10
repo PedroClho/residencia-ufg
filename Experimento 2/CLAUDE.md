@@ -18,18 +18,24 @@ Plano: `docs/superpowers/plans/2026-11-10-replicacao-memoryagentbench.md` (execu
 
 ## Arquitetura
 
-Ainda não há código. O plano define o layout; o desenho pede estas peças:
-
 ```
-dados/          snapshot local do banco do Atlas (fora do git) + manifesto versionado
-<pacote>/       agentes (contexto longo, RAG BM25, RAG embedding), clientes de LLM com
-                livro-caixa de custo, carga dos dados do autor e da OAB, avaliação e bootstrap
-tests/          pytest, tudo offline com clientes falsos
-resultados/     saída das rodadas reais (versionada)
-docs/           documento da entrega e docs/superpowers (specs e plans)
+pyproject.toml, uv.lock, .python-version   Python 3.12, hatchling, pacote `replica`
+replica/config.py        modelos, preços, tetos, revisões, fontes, números do artigo
+replica/livro_caixa.py   custo por provedor e teto de gasto persistente (escrita atômica)
+replica/clientes.py      clientes OpenAI, Anthropic e embeddings, todos pelo livro-caixa
+replica/arquivos.py      JSON/JSONL em UTF-8
+replica/conjuntos.py     Pergunta, Contexto; carga dos dados do autor e da OAB
+replica/autor/           cópia do código do autor (MIT): templates, métricas, agente
+replica/templates_oab.py, snapshot.py, oab.py, reclassificar.py   lado OAB
+replica/avaliacao.py, rodar.py, analise.py   acerto, rodador/piloto/portão, bootstrap
+tests/                   um arquivo por módulo, fakes em conftest.py (tudo offline)
+dados/                   snapshot do Atlas, fora do git, exceto dados/manifesto.json
+resultados/              rodadas e livro_caixa.json (versionados)
+docs/                    conferencia-materias.md, replicacao-memoryagentbench.md, superpowers/
 ```
 
-Atualize esta seção no mesmo commit em que o layout real existir.
+Ainda existem só `config.py` e `livro_caixa.py`; os demais arquivos entram nas tasks seguintes do
+plano. Atualize esta seção no mesmo commit em que o layout mudar.
 
 ## Comandos
 
@@ -72,6 +78,9 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
   fora do git de propósito, e `-A` pega a árvore inteira, mesmo rodado daqui. Commite por caminho.
 - **Limite da Anthropic:** 2 milhões de tokens de entrada por minuto (conferido em 2026-11-10); o
   contexto longo do Haiku (~950 mil tokens) cabe.
+- **O agente de embedding do autor esquece o que passa de ~285 mil tokens** (`input_length_limit`
+  300.000, `buffer_length` 15.000): descarta os chunks mais antigos. É proposital, por fidelidade ao
+  artigo; o documento final registra (item 5 das Correções no desenho).
 - **Os modelos da OpenAI saem do ar:** GPT-4o-mini, GPT-4o e GPT-4.1-mini em 2027-01-14; GPT-5-mini
   em 2026-12-11. Todas as rodadas com OpenAI terminam até 2026-12-20. Claude 3.7 Sonnet e Gemini 2.0
   Flash, usados no artigo, já não existem.

@@ -45,10 +45,11 @@ Achado (1) do artigo, §4.2: "superioridade dos métodos RAG na recuperação pr
 Achado (2) do artigo, §4.2: "superioridade dos modelos de contexto longo no aprendizado em tempo de
 teste".
 
-- **Direta:** BANKING77 e CLINC150, as tarefas de classificação multiclasse (MCC) do artigo, com 100
-  perguntas cada, métrica acurácia, sem juiz. No artigo, a média das cinco tarefas MCC (Tabela 3):
-  GPT-4o-mini com contexto longo 82,0; BM25 75,4. Os números por dataset estão no apêndice; quem
-  constrói confere.
+- **Direta:** as cinco tarefas de classificação multiclasse (MCC) do artigo (BANKING77, CLINC150,
+  NLU, TREC grosso e TREC fino), com 100 perguntas cada, métrica `exact_match` estrito, sem juiz.
+  No artigo, a média das cinco (Tabela 3): GPT-4o-mini com contexto longo 82,0; BM25 75,4; os
+  números por dataset estão na Tabela 7. Mudou de BANKING77 e CLINC150 para as cinco: ver item 7 de
+  "Correções depois da leitura do código do autor (2026-11-10)".
 - **OAB:** a memória são as provas até 2023, com gabarito. As questões de teste são as de 2024 e
   2025 (229 antes de filtrar), que ficam depois do corte de treino do GPT-4o-mini (outubro de 2023,
   segundo fontes secundárias). O contexto longo recebe as questões antigas mais recentes que
@@ -69,16 +70,16 @@ teste".
 - **As ablações do artigo** (tamanho de chunk e top-k, §4.3), por decisão do Pedro. A única ablação
   do experimento é a de k na OAB H1, que desenha a curva qualidade × tokens.
 - **Diferenças pequenas por dataset.** Na H2 direta, a diferença média do artigo é de 6,6 pontos. Com
-  200 perguntas, isso fica no limite do detectável; se der inconclusivo, o documento diz que o
-  orçamento não tinha resolução para mais.
+  as 500 perguntas das cinco MCC (item 7 das Correções, abaixo), isso é detectável; se der
+  inconclusivo, o documento diz que o orçamento não tinha resolução para mais.
 
 ### Regra de decisão (registrada antes de rodar)
 
 - **Uma comparação primária por afirmação e etapa**, quatro ao todo (H1 direta, H2 direta, H1 OAB,
   H2 OAB). A primária é sempre o par que o artigo reporta: **GPT-4o-mini com
   contexto longo × GPT-4o-mini com RAG BM25**. Só a primária dá veredito.
-- Na H2 direta, BANKING77 e CLINC150 entram juntos na primária: 200 perguntas, com o bootstrap
-  reamostrando dentro de cada dataset. O resultado por dataset é secundário.
+- Na H2 direta, as cinco MCC entram juntas na primária: 500 perguntas, com o bootstrap
+  reamostrando dentro de cada dataset (item 7 de "Correções depois da leitura do código do autor (2026-11-10)"). O resultado por dataset é secundário.
 - **Secundárias** (RAG por embedding × contexto longo, os pares do Haiku, cada dataset separado, a
   ablação de k) são reportadas com intervalo, sem veredito. Se divergirem da primária, a divergência
   vai para o documento e é discutida, mas não muda o veredito.
@@ -131,8 +132,10 @@ Seguir o artigo onde ele define algo; adaptar só o que a OAB obriga, e registra
   - Plano B, se as dependências não funcionarem no Windows nem no WSL: reimplementar esses agentes
     copiando literalmente do repositório os prompts, os tamanhos de chunk, o k e os tetos de saída.
     Nesse caso vale o teste de fidelidade da §9.
-- **Parâmetros do artigo:** top-k = 10; tamanho de chunk 512 para o MH-QA e 4096 para as MCC
-  (Tabela 15); teto de saída de 100 tokens no MH-QA e 20 nas MCC (Tabela 14). Os prompts são os do autor (Apêndice D), em inglês, sem tradução.
+- **Parâmetros do autor:** top-k = 10. O contexto longo memoriza em chunks de 4096 tokens; o RAG usa
+  chunks de 512 no MH-QA e de 4096 nas MCC. Teto de saída de 50 tokens no MH-QA e 20 nas MCC
+  (configurações do autor; item 2 de "Correções depois da leitura do código do autor (2026-11-10)"). Os prompts são os do autor (Apêndice D), em inglês,
+  sem tradução.
 - **Agente de contexto longo:** a memória é a sequência de chunks no formato do autor. Se não cabe
   na janela, aplica a mesma política do código do autor (a confirmar no repositório; a expectativa é
   descartar os chunks mais antigos). Na OAB H1 isso significa que o GPT-4o-mini vê só parte das
@@ -144,7 +147,8 @@ Seguir o artigo onde ele define algo; adaptar só o que a OAB obriga, e registra
   - Teto de saída de 20 tokens.
   - Haiku 5.5 sem raciocínio (`thinking: {type: "disabled"}`, aceito com effort `high` ou abaixo),
     para ficar comparável ao GPT-4o-mini, que não raciocina. Quem constrói confirma na API.
-- **Amostragem:** OpenAI com temperatura 0. Na Anthropic, `temperature`, `top_p` e `top_k` dão 400
+- **Amostragem:** OpenAI com temperatura 0,7, como nas configurações do autor (item 1 de
+  "Correções depois da leitura do código do autor (2026-11-10)"); só a reclassificação de matéria usa temperatura 0. Na Anthropic, `temperature`, `top_p` e `top_k` dão 400
   a partir da versão de API 2026-10-21; o Haiku roda com a amostragem padrão. Registrar isso.
 - **Cache ligado nas duas APIs.** O artigo calcula custos com cache (Apêndice I). Na OpenAI o cache é
   automático para prefixos idênticos; na Anthropic precisa de `cache_control` no bloco de contexto
@@ -206,27 +210,25 @@ milhão de tokens: GPT-4o-mini US$ 0,15 de entrada (US$ 0,075 com cache) e US$ 0
 Haiku 5.5 US$ 0,10 e US$ 0,50 até 100K tokens por chamada, US$ 0,50 e US$ 2,50 acima, escrita no
 cache ~1,25× e leitura ~0,1× da entrada; `text-embedding-3-small` US$ 0,02.
 
-| Parte | OpenAI (com cache) | Anthropic (com cache) |
+| | OpenAI | Anthropic |
 |---|---|---|
-| Direta: MH-QA, BANKING77, CLINC150 | ~US$ 5,20 | — |
-| Sem memória, 3.377 questões | ~US$ 0,25 | ~US$ 0,25 |
-| Reclassificação de matéria (2018 a 2023) | ~US$ 0,06 | — |
-| OAB H1 (300 questões) + ablação de k | ~US$ 3,50 | ~US$ 5,90 |
-| OAB H2 (229 questões) | ~US$ 2,40 | ~US$ 11,70 |
-| Embeddings | ~US$ 0,10 | — |
-| **Total estimado** | **~US$ 11,50** | **~US$ 18** |
+| Primárias (direta + OAB) e linhas de base | ~US$ 14,80 | ~US$ 0,25 |
+| Secundárias | ~US$ 5,90 | ~US$ 20,70 (com a H2 do Haiku em 1M; ~US$ 16,50 em 600K) |
+| **Total se tudo rodar** | ~US$ 20,70 | ~US$ 21 |
+| Teto do livro-caixa | US$ 19,50 (trava de US$ 20), US$ 4 deles de reserva | US$ 29,50 (trava de US$ 30) |
 
-- Na OpenAI, o total mais a reserva de US$ 4 para depuração (ver "Se a etapa direta não reproduzir")
-  dá ~US$ 15,50, dentro do teto de US$ 20.
+Tabela revista com a leitura do código do autor (item 13 de "Correções depois da leitura do código do autor (2026-11-10)"). Com a trava de US$ 20, as
+primárias (~US$ 14,80) cabem nos US$ 15,50 efetivos. As secundárias da OpenAI dependem da reserva,
+liberada (`--usar-reserva`) depois que a etapa direta reproduzir ou fechar a janela de depuração. O
+que não couber sai do fim da fila, e o documento registra.
+
 - Sem cache, a OpenAI daria ~US$ 19 (no limite) e a Anthropic passaria de US$ 140 (não cabe). **O
   cache é obrigatório**, e o piloto existe para confirmá-lo.
 - O maior item é o contexto longo do Haiku na H2: até ~950K tokens por chamada (a memória inteira
   daria 1,37M tokens do Haiku e não cabe na janela). Se o piloto mostrar risco, a memória do Haiku na
   H2 cai para 600K tokens (~US$ 7,30).
-- O experimento 1 gastou mais do que a estimativa (US$ 6,14 contra US$ 3 a 5). Na Anthropic, a margem
-  de 50% fica dentro do teto (~US$ 27). Na OpenAI, a margem de 50% sozinha cabe (~US$ 17,30),
-  mas somada à reserva passaria um pouco do teto; o livro-caixa e a ordem de prioridade garantem
-  que o que ficar de fora seja secundário.
+- O experimento 1 gastou mais do que a estimativa (US$ 6,14 contra US$ 3 a 5). O livro-caixa e a
+  ordem de prioridade garantem que o que ficar de fora seja secundário.
 
 Travas obrigatórias:
 
@@ -264,6 +266,38 @@ Travas obrigatórias:
   autor num subconjunto para comparar.
 - Se ainda assim não reproduzir, a OAB segue, e o documento registra: "não reproduzido; não foi
   possível separar o autor da reimplementação".
+
+## Correções depois da leitura do código do autor (2026-11-10)
+
+A leitura do código do autor (commit `538026089d1a8a8eff05121d0db89b388f360eba`) e dos dados dele (revisão `7ea066982b140a19337e17e60d45d4076e042faf` no Hugging Face) mudou estes pontos. Pela regra do próprio desenho ("seguir o artigo onde ele define algo"), os itens 1 a 6 não precisam de decisão nova. **O item 7 mudou o desenho; o Pedro aprovou em 2026-11-10.**
+
+1. **Temperatura 0,7** nos agentes da OpenAI, como nas configurações do autor; o desenho dizia 0. Vale também para a OAB, porque o código e as configurações são os mesmos. Só a reclassificação de matéria usa temperatura 0, porque não é braço do experimento.
+2. **Chunks e tetos de saída do autor.** O contexto longo memoriza em chunks de 4096 tokens. O RAG usa chunks de 512 no MH-QA (como o artigo e a lista de ablação do autor) e de 4096 nas MCC. O teto de saída do MH-QA é 50 tokens (configuração do autor; o desenho dizia 100).
+3. **Métricas** (README do autor, "Clarification on Evaluation Metrics"): MH-QA usa `substring_exact_match`; MCC usa `exact_match` estrito, em que `"label: 43"` conta como erro. A versão com leitura flexível de `label:` entra como secundária.
+4. **BM25 e embedding sem LangChain.** O `BM25Retriever` do LangChain é o `rank_bm25.BM25Okapi` com tokenização por `str.split()`, sem minúsculas; reproduzimos direto com `rank_bm25`. O FAISS L2 sobre embeddings normalizados ordena igual ao cosseno; reproduzimos com numpy. O caminho de embedding do autor exige Azure (`use_azure=True` fixo no código); trocamos pelo cliente normal da OpenAI.
+5. **Peculiaridade do autor que fica:** o agente de embedding tem `input_length_limit` 300.000 e `buffer_length` 15.000. Com isso, ele descarta os chunks mais antigos quando a memória passa de ~285 mil tokens. No MH-QA (430 mil tokens), ele indexa só os últimos dois terços do contexto; o BM25 (limite de 10 milhões) indexa tudo. Isso ajuda a explicar o 44,0 do embedding contra o 56,0 do BM25. É o que o artigo rodou, então fica, e o documento final registra.
+6. **Números do artigo para o teste de reprodução** (arXiv 2507.05257v4, conferidos verbatim):
+   - Tabela 3, MH-QA: contexto longo 43,0; BM25 56,0; embedding 44,0. MCC (média das cinco): 82,0; 75,4; 70,0.
+   - Tabela 7, por dataset (BANKING, CLINIC, NLU, TREC C, TREC F): contexto longo 93,0 / 93,0 / 87,0 / 73,0 / 66,0; BM25 89,0 / 89,0 / 84,0 / 62,0 / 53,0; embedding 88,0 / 89,0 / 83,0 / 54,0 / 36,0.
+   - Inconsistência do artigo: a média da Tabela 7 do contexto longo dá 82,4, não os 82,0 da Tabela 3. O documento final registra.
+7. **[Aprovado pelo Pedro] A H2 direta usa as cinco MCC em vez de só BANKING77 e CLINC150.**
+   - Motivo: nesses dois datasets a diferença do artigo é de 4 pontos (93 × 89), que 200 perguntas não detectam com segurança. A célula MCC da Tabela 3 (82,0 × 75,4) é a média das cinco, e 500 perguntas detectam 6,6 pontos.
+   - Custo: +US$ 4,30 na OpenAI. Se o Pedro preferir os dois datasets do desenho, basta reduzir `MCC_FONTES` em `config.py`.
+8. **OAB H2 com chunk de 4096 no RAG**, análogo às MCC. Cada busca traz ~160 questões antigas (~41 mil tokens), mais caro do que o desenho estimou.
+9. **Variante "corpus inteiro" da OAB H1 só com BM25.** Com o limite do autor, o agente de embedding guardaria só os últimos ~285 mil tokens do corpus de 1,9 milhão, e a variante não mediria nada.
+10. **Ordem de prioridade.** As linhas de base sem memória sobem para antes das primárias da OAB, porque o portão do Haiku depende delas e custam ~US$ 0,50.
+11. **GPT-4.1-mini fica fora.** A configuração mais barata dele custaria mais de US$ 4, e não sobra orçamento.
+12. **Haiku no contexto longo** segue a convenção do autor para o Claude (janela menos uma folga, em tokens do tokenizador do autor): `input_length_limit` 1.000.000 com `buffer_length` 480.000 (memória de ~520 mil tokens `o200k`, ~890 mil do Haiku) ou 670.000 na variante 600K.
+13. **Orçamento revisto, com cache:**
+
+| | OpenAI | Anthropic |
+|---|---|---|
+| Primárias (direta + OAB) e linhas de base | ~US$ 14,80 | ~US$ 0,25 |
+| Secundárias | ~US$ 5,90 | ~US$ 20,70 (com a H2 do Haiku em 1M; ~US$ 16,50 em 600K) |
+| **Total se tudo rodar** | ~US$ 20,70 | ~US$ 21 |
+| Teto do livro-caixa | US$ 19,50 (trava de US$ 20), US$ 4 deles de reserva | US$ 29,50 (trava de US$ 30) |
+
+Com a trava de US$ 20, as primárias (~US$ 14,80) cabem nos US$ 15,50 efetivos. As secundárias da OpenAI dependem da reserva, liberada (`--usar-reserva`) depois que a etapa direta reproduzir ou fechar a janela de depuração. O que não couber sai do fim da fila, e o documento registra.
 
 ## 7. Prazo
 
