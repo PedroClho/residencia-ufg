@@ -292,3 +292,47 @@ def test_embeddings_com_usage_ilegivel_registram_o_custo_estimado(livro):
     bruto = SimpleNamespace(embeddings=SimpleNamespace(create=lambda **kw: resposta))
     m = ClienteEmbeddings(livro, bruto=bruto).embutir(["texto qualquer"])
     assert m.shape == (1, 2) and livro.gasto("openai") > 0
+
+
+def _erro_429_do_sdk(corpo):
+    """RateLimitError montado como o SDK real monta, sem rede."""
+    import httpx2
+    import openai
+
+    req = httpx2.Request("POST", "https://api.openai.com/v1/chat/completions")
+    resp = httpx2.Response(429, json=corpo, request=req)
+    return openai.OpenAI(api_key="x")._make_status_error_from_response(resp)
+
+
+_MSG_SEM_CREDITO = ("You have no credits remaining. Add credits to continue using the API at "
+                    "https://platform.openai.com/settings/organization/billing/.")
+
+
+def _rodar_com_erro_do_sdk(livro, corpo):
+    import openai
+
+    erro = _erro_429_do_sdk(corpo)
+    esperas, fake = [], FakeOpenAI(responder=lambda kw: (_ for _ in ()).throw(erro))
+    c = ClienteOpenAI("gpt-4o-mini", livro, bruto=fake, dormir=esperas.append, erros_de_taxa=(openai.RateLimitError,))
+    return c, esperas, fake
+
+
+def test_sem_credito_com_tipo_insufficient_quota_para(livro):
+    c, esperas, fake = _rodar_com_erro_do_sdk(
+        livro, {"error": {"message": _MSG_SEM_CREDITO, "type": "insufficient_quota"}})
+    with raises(LimiteDoPainel):
+        c.conversar("S", "m", 20)
+    assert esperas == [] and len(fake.chamadas) == 1
+
+
+def test_sem_credito_so_pela_mensagem_para(livro):
+    c, esperas, fake = _rodar_com_erro_do_sdk(livro, {"error": {"message": _MSG_SEM_CREDITO}})
+    with raises(LimiteDoPainel):
+        c.conversar("S", "m", 20)
+    assert esperas == [] and len(fake.chamadas) == 1
+
+
+def test_limite_de_taxa_comum_continua_esperando(livro):
+    msg = "Rate limit reached for gpt-4o-mini in organization org-x on tokens per min. Please try again in 20ms."
+    c, esperas, fake = _rodar_com_erro_do_sdk(livro, {"error": {"message": msg, "type": "requests"}})
+    assert c.conversar("S", "m", 20).erro == "[erro: api]" and len(esperas) == 5

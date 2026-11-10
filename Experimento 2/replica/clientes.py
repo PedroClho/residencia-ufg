@@ -65,9 +65,31 @@ def _texto_do_erro(e: Exception) -> str:
     return f"{e} {getattr(e, 'code', None) or ''} {getattr(e, 'body', None) or ''}".casefold()
 
 
+_SINAIS_OPENAI = ("no credits remaining", "add credits", "exceeded your current quota", "insufficient_quota")
+
+
+def _mensagens_do_corpo(e: Exception) -> str:
+    corpo = getattr(e, "body", None)
+    if not isinstance(corpo, dict):
+        return ""
+    interno = corpo.get("error")
+    partes = [interno.get("message") if isinstance(interno, dict) else None, corpo.get("message")]
+    return " ".join(p for p in partes if isinstance(p, str)).casefold()
+
+
 def _cota_openai_esgotada(e: Exception) -> bool:
-    """429 `insufficient_quota`: a trava do painel da OpenAI (ou falta de saldo). Esperar não adianta."""
-    return getattr(e, "code", None) == "insufficient_quota" or "insufficient_quota" in _texto_do_erro(e)
+    """429 de cota/saldo: a trava do painel da OpenAI (ou falta de crédito). Esperar não adianta.
+
+    Pelo código/tipo `insufficient_quota` ou pelo texto da mensagem, que nem sempre traz o código.
+    Limite de taxa comum ("Rate limit reached ... try again in 20ms") não casa."""
+    if getattr(e, "code", None) == "insufficient_quota":
+        return True
+    corpo = getattr(e, "body", None)
+    interno = corpo.get("error") if isinstance(corpo, dict) else None
+    if isinstance(interno, dict) and "insufficient_quota" in (interno.get("code"), interno.get("type")):
+        return True
+    texto = f"{_texto_do_erro(e)} {_mensagens_do_corpo(e)}"
+    return any(s in texto for s in _SINAIS_OPENAI)
 
 
 _SINAIS_ANTHROPIC = ("credit balance", "usage limit", "spend limit")
