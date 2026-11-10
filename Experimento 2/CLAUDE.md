@@ -84,11 +84,12 @@ Toda rodada real **gasta dinheiro**; o gasto acumulado fica em `resultados/livro
   Com nomes, a variante escolhida tem de estar entre eles e a outra não; senão o comando sai com erro
   (nunca roda uma variante diferente da pedida).
 - O teto de um provedor, ou o limite do painel (429 `insufficient_quota` ou "no credits remaining" na
-  OpenAI; saldo ou limite de uso/gasto na Anthropic; sem as esperas de 60 s), para a configuração e pula de antemão só as seguintes
-  cujo **leitor** é daquele provedor. As de leitor Haiku com embedding da OpenAI ainda tentam: o
-  livro-caixa decide a cada chamada. Uma exceção inesperada numa configuração vira `status=falhou: ...` e
-  a rodada segue; uma falha ao gravar o livro-caixa (`ErroDoLivroCaixa`, depois de 5 tentativas) para a
-  rodada inteira. O gasto do livro-caixa é impresso sempre no fim.
+  OpenAI; saldo ou limite de uso/gasto na Anthropic; sem as esperas de 60 s), para a configuração e
+  pula de antemão só as seguintes cujo **leitor** é daquele provedor. As de leitor Haiku com embedding
+  da OpenAI ainda tentam: o livro-caixa decide a cada chamada. Uma exceção inesperada numa
+  configuração vira `status=falhou: ...` e a rodada segue; uma falha ao gravar o livro-caixa
+  (`ErroDoLivroCaixa`, depois de 5 tentativas) para a rodada inteira. O gasto do livro-caixa é
+  impresso sempre no fim.
 - O portão do Haiku: `oab-h2-lc-haiku*` só roda se o `oab-sem-memoria-haiku.jsonl` **da mesma pasta de
   rodada** tiver resposta final para todas as 224 questões de teste da H2 (2024 e 2025) e acertar menos
   de 90% delas; linha de base ausente ou parcial bloqueia.
@@ -128,8 +129,8 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
   dentro dos tetos e na ordem do plano.
 - **O saldo pré-pago da OpenAI acaba antes da trava do painel:** em 2026-11-10 a API devolveu 429 "You
   have no credits remaining" com US$ 3,29 gastos (trava em US$ 20). Desde `fff61c6` o cliente casa esse
-  texto e para com `LimiteDoPainel`; antes, esperava 5 × 60 s por pergunta. Confira o saldo, não só a trava,
-  antes de uma rodada da OpenAI.
+  texto e para com `LimiteDoPainel`; antes, esperava 5 × 60 s por pergunta. Confira o saldo, não só a
+  trava, antes de uma rodada da OpenAI.
 - **Nunca `git add -A`:** `../Experimento 1/RESIDENCIA/` e `../Experimento 1/artigos/` (PDFs) estão
   fora do git de propósito, e `-A` pega a árvore inteira, mesmo rodado daqui. Commite por caminho.
 - **Limite da Anthropic:** 2 milhões de tokens de entrada por minuto (conferido em 2026-11-10); o
@@ -139,14 +140,16 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
   artigo; o documento final registra (item 5 das Correções no desenho).
 - **Contexto longo não é contexto inteiro:** o agente do autor trunca para `input_length_limit −
   buffer_length` e guarda o fim (GPT-4o-mini: ~124 mil tokens; Haiku: ~520 mil `o200k`). No MH-QA (~421
-  mil) o GPT-4o-mini vê menos de um terço; na OAB, só o fim do CPC, CC, CF e CLT. Leve isso em conta ao ler
-  "o RAG vence".
+  mil) o GPT-4o-mini vê menos de um terço; na OAB H1, só o fim de 7 dos 15 contextos (CPC, CC, CF, CLT
+  e os blocos de Administrativo, Empresarial e Eleitoral: 159 das 300 questões). Leve isso em conta ao
+  ler "o RAG vence".
 - **BM25 da OAB com a tokenização do autor** (`str.split()`: sem minúsculas, pontuação grudada, sem
   stemmer), por fidelidade; o desenho (§5) sugeria stemmer de português. Trocar é outra configuração, não
   um conserto.
-- **Os pares secundários não saem do `analise`:** a `tabela.md` só tem as primárias, a reprodução, as
-  acurácias e os custos. Os pares do Haiku (contexto longo × BM25, memória × sem memória) do documento são
-  calculados à parte com `analise.bootstrap_pareado`, pareando por `pergunta_id`; refaça-os a cada rodada nova.
+- **Os pares exploratórios não saem do `analise`:** os pares contexto longo × RAG estão na `tabela.md`
+  ("Comparações secundárias"), mas os pares memória × sem memória e GPT-4o-mini × Haiku sem memória, que
+  o documento usa como exploratórios (não registrados no desenho), são calculados à parte com
+  `analise.bootstrap_pareado` (semente 42), pareando por `pergunta_id`. Refaça-os a cada rodada nova.
 - **`uv sync` falha com "tls handshake eof":** o DNS do roteador às vezes resolve
   `files.pythonhosted.org` para 100.127.127.77 (CGNAT); o TCP abre e o TLS morre. O `pypi.org` resolve
   normal. Conserto: DNS público (1.1.1.1 ou 8.8.8.8) no adaptador de rede, ou um proxy CONNECT local
