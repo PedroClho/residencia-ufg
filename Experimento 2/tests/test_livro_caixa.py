@@ -37,3 +37,42 @@ def test_reserva_reduz_o_teto_ate_ser_liberada(tmp_path):
 def test_livro_persiste_entre_instancias(tmp_path):
     LivroCaixa(tmp_path / "l.json").registrar("anthropic", 1.25)
     assert LivroCaixa(tmp_path / "l.json").gasto("anthropic") == approx(1.25)
+
+
+# --- gravação com novas tentativas e erro fatal ---
+
+import os  # noqa: E402
+
+from replica import livro_caixa as modulo_livro  # noqa: E402
+from replica.livro_caixa import ErroDoLivroCaixa  # noqa: E402
+
+
+def test_registrar_tenta_de_novo_quando_o_arquivo_esta_preso(tmp_path, monkeypatch):
+    real, falhas = os.replace, []
+
+    def replace_preso(origem, destino):
+        if len(falhas) < 2:
+            falhas.append(1)
+            raise PermissionError("arquivo aberto em outro programa")
+        real(origem, destino)
+
+    monkeypatch.setattr(modulo_livro.os, "replace", replace_preso)
+    esperas = []
+    livro = LivroCaixa(tmp_path / "l.json", dormir=esperas.append)
+    livro.registrar("openai", 0.25)
+    assert livro.gasto("openai") == approx(0.25) and esperas == [0.2, 0.2]
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_registrar_que_nao_consegue_gravar_levanta_erro_fatal(tmp_path, monkeypatch):
+    def replace_preso(origem, destino):
+        raise PermissionError("arquivo aberto em outro programa")
+
+    monkeypatch.setattr(modulo_livro.os, "replace", replace_preso)
+    esperas = []
+    livro = LivroCaixa(tmp_path / "l.json", dormir=esperas.append)
+    with raises(ErroDoLivroCaixa, match="0.2500"):
+        livro.registrar("openai", 0.25)
+    assert esperas == [0.2] * 4  # cinco tentativas
+    assert list(tmp_path.glob("*.tmp")) == [] and not (tmp_path / "l.json").exists()
+    assert not issubclass(ErroDoLivroCaixa, LimiteDeGasto)  # não é teto: para a rodada inteira
