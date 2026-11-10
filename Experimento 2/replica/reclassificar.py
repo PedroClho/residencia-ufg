@@ -2,6 +2,7 @@
 
 Os rótulos do banco depois de 2018 são pouco confiáveis, e a matéria decide qual lei o agente do H1 recebe.
 """
+import argparse
 import random
 import re
 import sys
@@ -17,13 +18,27 @@ MATERIAS: tuple[str, ...] = (*MATERIA_PARA_LEIS, *MATERIAS_FORA_H1)
 
 SYSTEM = "Você classifica questões da prova da OAB pela matéria."
 
+BLOCOS = (
+    "Na prova objetiva da OAB aplicada pela FGV, as questões vêm em blocos por matéria, sempre nesta "
+    "ordem de numeração: 1 a 8, Ética Profissional; 9 e 10, Filosofia do Direito; 11 a 17, Direito "
+    "Constitucional; 18 e 19, Direitos Humanos; 20 e 21, Direito Internacional; 22 a 26, Direito "
+    "Tributário; 27 a 32, Direito Administrativo; 33 e 34, Direito Ambiental; 35 a 41, Direito Civil; "
+    "42 e 43, Direito da Criança e do Adolescente; 44 e 45, Direito do Consumidor; 46 a 50, Direito "
+    "Empresarial; 51 a 57, Direito Processual Civil; 58 a 63, Direito Penal; 64 a 69, Direito "
+    "Processual Penal; 70 a 75, Direito do Trabalho; 76 a 80, Direito Processual do Trabalho. A "
+    "matéria da questão é a do bloco em que está o número dela. Só escolha outra matéria se o número "
+    "estiver fora de 1 a 80 ou se o conteúdo não tiver relação nenhuma com a matéria do bloco."
+)
+
 
 def prompt_classificacao(q: dict) -> tuple[str, str]:
     """`(system, mensagem)` para classificar a questão em uma das `MATERIAS`."""
     mensagem = (
         "Classifique a questão abaixo em exatamente uma destas matérias:\n"
         + "\n".join(f"- {m}" for m in MATERIAS)
-        + "\n\nResponda só com o nome da matéria, exatamente como está na lista.\n\nQuestão:\n"
+        + "\n\n" + BLOCOS
+        + "\n\nResponda só com o nome da matéria, exatamente como está na lista.\n\nQuestão número "
+        + str(q["numero_questao"]) + ":\n"
         + formatar_questao(q)
     )
     return SYSTEM, mensagem
@@ -81,7 +96,25 @@ def amostra_conferencia(qs: list[dict], mapa: dict[str, str], n: int = 30,
     return "\n".join(linhas) + "\n"
 
 
-def main() -> int:
+def _guardar_conferencia_preenchida(arq) -> None:
+    """Move para `-anterior` uma conferência já preenchida, para não destruí-la."""
+    if not arq.exists():
+        return
+    for linha in arq.read_text(encoding="utf-8").splitlines():
+        if linha.startswith("|") and linha.endswith("|"):
+            celulas = linha.split("|")
+            ok = celulas[-2].strip()
+            if len(celulas) >= 7 and ok and ok != "ok?" and not set(ok) <= {"-"}:
+                destino = arq.with_name("conferencia-materias-anterior.md")
+                arq.replace(destino)
+                print(f"conferência preenchida movida para {destino}", file=sys.stderr)
+                return
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--semente", type=int, default=SEMENTE)
+    args = ap.parse_args(argv)
     todas = ler_json(DADOS / "atlas" / "questoes_oab.json")
     qs = oab.deduplicar([q for q in todas if oab.questao_valida(q) and 2018 <= int(q["ano"]) <= 2023])
     livro = LivroCaixa(LIVRO_CAIXA)
@@ -90,8 +123,9 @@ def main() -> int:
     gravar_json(DADOS / "materias_2018_2023.json", mapa)
     docs = RAIZ / "docs" / "conferencia-materias.md"
     docs.parent.mkdir(parents=True, exist_ok=True)
-    docs.write_text("# Conferência da reclassificação de matéria\n\n" + amostra_conferencia(qs, mapa),
-                    encoding="utf-8")
+    _guardar_conferencia_preenchida(docs)
+    docs.write_text("# Conferência da reclassificação de matéria\n\n"
+                    + amostra_conferencia(qs, mapa, semente=args.semente), encoding="utf-8")
     mudaram = sum(1 for q in qs if mapa[str(q["id"])] != q["materia"])
     print(f"classificadas: {len(mapa)}")
     print(f"mantiveram o rótulo do banco (sem resposta válida): {len(sem_resposta)}")
