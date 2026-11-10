@@ -124,10 +124,12 @@ def _parcial(respondidas: int, total: int) -> str:
 
 
 def _nas_esperadas(linhas: list[dict], esperadas: dict[str, str] | None) -> list[dict]:
-    """Só as linhas de perguntas esperadas (todas, se a configuração não está em `CONFIGURACOES`)."""
-    if esperadas is None:
-        return linhas
-    return [l for l in linhas if str(l["pergunta_id"]) in esperadas]
+    """Só as linhas de perguntas esperadas (todas, se a configuração não está em `CONFIGURACOES`), ordenadas por
+    `pergunta_id` como texto, a mesma ordem do pareamento em `_comparar`: o bootstrap usa a semente fixa sobre
+    a ordem das linhas, e assim a mesma acurácia sai com o mesmo IC em todas as seções."""
+    if esperadas is not None:
+        linhas = [l for l in linhas if str(l["pergunta_id"]) in esperadas]
+    return sorted(linhas, key=lambda l: str(l["pergunta_id"]))
 
 
 def _nota(linhas: list[dict], esperadas: dict[str, str] | None) -> str:
@@ -161,7 +163,9 @@ def _estratos_mcc(linhas: list[dict]) -> list[str] | None:
 
 
 def _acuracia_ic(linhas: list[dict]) -> tuple[float, float, float]:
-    """Acurácia com IC; nas MCC o bootstrap é sempre estratificado por `fonte`, em todas as seções."""
+    """Acurácia com IC; nas MCC o bootstrap é sempre estratificado por `fonte`, em todas as seções. As linhas
+    vão na ordem de `pergunta_id` (texto), a do pareamento, para o IC sair igual em toda seção e no gráfico."""
+    linhas = sorted(linhas, key=lambda l: str(l["pergunta_id"]))
     return intervalo_acuracia([_acerto(l) for l in linhas], estratos=_estratos_mcc(linhas))
 
 
@@ -278,7 +282,7 @@ def _secao_pareadas(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] 
            "com IC de 95%. Diferença = RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (nas "
            "MCC, estratificado por dataset); linhas com erro contam como erradas e nas MCC a acurácia é a "
            "leitura flexível de `label:`. Comparação com resposta final faltando sai \"parcial (x de N)\"; par "
-           "sem nenhuma configuração na pasta sai \"não rodada\".", ""]
+           "com alguma configuração ausente da pasta sai \"não rodada\", e a nota diz qual falta.", ""]
     out += _tabela(["Comparação", "n", "Contexto longo", "RAG", "Diferença", "Nota"], linhas)
     if notas:
         out += [""] + notas

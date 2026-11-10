@@ -18,7 +18,7 @@ Nas MCC, a acurácia é a leitura flexível de `label:` (ver Decisões do piloto
 
 ## Comparações secundárias
 
-Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem veredito: só a diferença com IC de 95%. Diferença = RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (nas MCC, estratificado por dataset); linhas com erro contam como erradas e nas MCC a acurácia é a leitura flexível de `label:`. Comparação com resposta final faltando sai "parcial (x de N)"; par sem nenhuma configuração na pasta sai "não rodada".
+Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem veredito: só a diferença com IC de 95%. Diferença = RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (nas MCC, estratificado por dataset); linhas com erro contam como erradas e nas MCC a acurácia é a leitura flexível de `label:`. Comparação com resposta final faltando sai "parcial (x de N)"; par com alguma configuração ausente da pasta sai "não rodada", e a nota diz qual falta.
 
 | Comparação | n | Contexto longo | RAG | Diferença | Nota |
 |---|---|---|---|---|---|

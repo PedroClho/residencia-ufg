@@ -15,7 +15,7 @@ Nas MCC, a acurácia é a leitura flexível de `label:` (ver Decisões do piloto
 
 ## Comparações secundárias
 
-Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem veredito: só a diferença com IC de 95%. Diferença = RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (nas MCC, estratificado por dataset); linhas com erro contam como erradas e nas MCC a acurácia é a leitura flexível de `label:`. Comparação com resposta final faltando sai "parcial (x de N)"; par sem nenhuma configuração na pasta sai "não rodada".
+Contexto longo × RAG (embedding ou BM25), pareadas por `pergunta_id`, sem veredito: só a diferença com IC de 95%. Diferença = RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (nas MCC, estratificado por dataset); linhas com erro contam como erradas e nas MCC a acurácia é a leitura flexível de `label:`. Comparação com resposta final faltando sai "parcial (x de N)"; par com alguma configuração ausente da pasta sai "não rodada", e a nota diz qual falta.
 
 | Comparação | n | Contexto longo | RAG | Diferença | Nota |
 |---|---|---|---|---|---|
@@ -49,9 +49,9 @@ Acurácia com IC de 95%, sem veredito. As configurações diretas têm a compara
 |---|---|---|---|
 | oab-sem-memoria-4omini | 3377 | 58.9% [57.3%; 60.6%] |  |
 | oab-sem-memoria-haiku | 3377 | 70.7% [69.2%; 72.3%] |  |
-| oab-h1-bm25-haiku | 300 | 74.3% [69.3%; 79.3%] |  |
+| oab-h1-bm25-haiku | 300 | 74.3% [69.3%; 79.0%] |  |
 | oab-h2-bm25-haiku | 224 | 70.5% [64.3%; 76.3%] |  |
-| oab-h1-lc-haiku | 300 | 73.7% [68.7%; 78.3%] |  |
+| oab-h1-lc-haiku | 300 | 73.7% [68.7%; 78.7%] |  |
 | oab-h2-lc-haiku | 224 | 73.2% [67.4%; 79.0%] |  |
 
 ## Custos

@@ -380,3 +380,38 @@ def test_secundaria_pareada_parcial_e_mcc_flexivel(tmp_path):
     c = {x[0]: x for x in _linhas_da_secao(md, "Comparações secundárias")}["H2 direta: contexto longo × embedding"]
     assert c[1] == str(10 * len(MCC_FONTES)) and c[2].startswith("80.0%") and c[3].startswith("60.0%")
     assert c[4].startswith("-20.0 pp") and c[5] == f"parcial ({10 * len(MCC_FONTES)} de {20 * len(MCC_FONTES)})"
+
+
+def test_secundaria_pareada_mcc_e_estratificada(tmp_path):
+    # Fontes 0 e 1: o embedding acerta e o contexto longo erra (dif 1); fontes 2 a 4: os dois acertam (dif 0).
+    # Dentro de cada fonte a diferença é constante; reamostrando por fonte, o intervalo não tem largura.
+    for k, f in enumerate(MCC_FONTES):
+        _gravar(tmp_path, "direta-mcc-lc-4omini", f, [False] * 20, flexiveis=[k >= 2] * 20)
+        _gravar(tmp_path, "direta-mcc-emb-4omini", f, [False] * 20, flexiveis=[True] * 20)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
+    c = {x[0]: x for x in _linhas_da_secao(md, "Comparações secundárias")}["H2 direta: contexto longo × embedding"]
+    assert c[2] == "60.0% [60.0%; 60.0%]" and c[3] == "100.0% [100.0%; 100.0%]"
+    assert c[4] == "+40.0 pp [+40.0; +40.0]"
+
+
+def test_mesma_acuracia_tem_o_mesmo_ic_em_todas_as_secoes(tmp_path):
+    # Gravadas na ordem numérica (oab_h1:0, oab_h1:1, ..., oab_h1:10, ...); o pareamento ordena por
+    # `pergunta_id` como texto. O IC de cada configuração tem de sair igual nas duas seções.
+    padrao = [i % 3 != 0 and i < 70 for i in range(120)]
+    _gravar(tmp_path, "oab-h1-lc-haiku", "oab_h1", padrao)
+    _gravar(tmp_path, "oab-h1-bm25-haiku", "oab_h1", padrao[::-1])
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
+    par = {x[0]: x for x in _linhas_da_secao(md, "Comparações secundárias")}["H1 OAB, Haiku: contexto longo × BM25"]
+    sec = {x[0]: x for x in _linhas_da_secao(md, "Secundárias")}
+    assert sec["oab-h1-lc-haiku"][2] == par[2]
+    assert sec["oab-h1-bm25-haiku"][2] == par[3]
+    # o ponto do gráfico usa o mesmo intervalo
+    _, acc, menos, mais = analise._ponto(carregar_rodada(tmp_path)["oab-h1-lc-haiku"])
+    assert f"{acc * 100:.1f}% [{(acc - menos) * 100:.1f}%; {(acc + mais) * 100:.1f}%]" == par[2]
+
+
+def test_cabecalho_das_secundarias_pareadas_diz_quando_sai_nao_rodada(tmp_path):
+    _gravar(tmp_path, "oab-h1-lc-haiku", "oab_h1", [True] * 5)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
+    bloco = md.split("## Comparações secundárias")[1].split("\n## ")[0]
+    assert "alguma configuração ausente" in bloco and "sem nenhuma configuração" not in bloco
