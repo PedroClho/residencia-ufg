@@ -30,11 +30,11 @@ replica/templates_oab.py, snapshot.py, oab.py, reclassificar.py   lado OAB
 replica/avaliacao.py, rodar.py, analise.py   acerto, rodador/piloto/portão, bootstrap
 tests/                   um arquivo por módulo, fakes em conftest.py (tudo offline)
 dados/                   snapshot do Atlas, fora do git, exceto dados/manifesto.json
-resultados/              rodadas e livro_caixa.json (versionados)
+resultados/              rodadas e livro_caixa.json (versionados); .rodador.lock (trava, fora do git)
 docs/                    conferencia-materias.md, replicacao-memoryagentbench.md, superpowers/
 ```
 
-Falta só `replica/analise.py` (Task 10 do plano). Atualize esta seção no mesmo commit em que o layout
+O layout está completo (Tasks 2 a 10 do plano). Atualize esta seção no mesmo commit em que o layout
 mudar.
 
 ## Comandos
@@ -43,44 +43,60 @@ mudar.
 uv sync                                                      # ambiente
 uv run pytest                                                # GATE DE TESTES (offline, sem API)
 uv run python -c "import nltk; nltk.download('punkt_tab')"   # preparo único do fatiador do autor
+uv run python -c "import tiktoken as t; t.get_encoding('o200k_base'); t.get_encoding('cl100k_base')"
+                                                             # preparo único: aquece o cache do tiktoken
 
 PYTHONUTF8=1 uv run python -m replica.snapshot               # banco do Atlas (só leitura) -> dados/     grátis
 PYTHONUTF8=1 uv run python -m replica.reclassificar          # matéria 2018-2023         GASTA ~US$ 0,10 OpenAI
 PYTHONUTF8=1 uv run python -m replica.oab                    # dados/oab/*.json a partir do snapshot     grátis
-PYTHONUTF8=1 uv run python -m replica.rodar --piloto 10 --rodada resultados/piloto-AAAAMMDD
+PYTHONUTF8=1 uv run python -m replica.rodar --todas --piloto 10 --rodada resultados/piloto-AAAAMMDD
                                                              # GASTA ~US$ 1,50 em cada provedor
 PYTHONUTF8=1 uv run python -m replica.rodar NOMES... --rodada resultados/AAAAMMDD-ETAPA
                                                              # GASTA: direta ~US$ 8,20; OAB ~US$ 6,50
                                                              # na OpenAI e até ~US$ 21 na Anthropic
-PYTHONUTF8=1 uv run python -m replica.analise resultados/AAAAMMDD-ETAPA   # tabela.md (Task 10)  grátis
+PYTHONUTF8=1 uv run python -m replica.analise resultados/AAAAMMDD-ETAPA   # tabela.md e gráfico  grátis
 ```
 
 Toda rodada real **gasta dinheiro**; o gasto acumulado fica em `resultados/livro_caixa.json`.
 
-- **Nunca rode dois rodadores ao mesmo tempo:** o livro-caixa e os `.jsonl` não têm trava de arquivo.
+- **Um processo que gasta por vez:** `rodar` e `reclassificar` pegam a trava `resultados/.rodador.lock`
+  (pid e hora de início dentro) e se recusam a começar se ela existe. Se nenhum estiver vivo (o processo
+  caiu ou foi morto), apague o arquivo.
+- Antes de gastar, `rodar` confere o livro-caixa contra a soma dos `custo_usd` de `resultados/**/*.jsonl`
+  (linhas idênticas, como a linha de base copiada do piloto, contam uma vez) e se recusa a começar se ele
+  estiver abaixo: é o sinal de que um `git stash`, `checkout -- .` ou `reset --hard` o reverteu.
 - `rodar` grava uma linha por pergunta em `{rodada}/{configuração}.jsonl` logo depois de cada resposta.
   Rodar o mesmo comando de novo retoma: só as linhas com erro de API (`[erro: api]` ou exceção) são
   refeitas. `[erro: recusa]` e `[erro: resposta vazia]` são respostas finais: já foram pagas, contam como
-  erro de resposta e não são refeitas. O resumo separa `erros_api` de `recusas_vazias`; rode de novo até
+  erro de resposta e não são refeitas; uma resposta paga que não dá para ler também vira `[erro: resposta
+  vazia]`, com o custo real. O resumo separa `erros_api` de `recusas_vazias`; rode de novo até
   `erros_api=0`.
-- Com nomes, roda só esses, sempre na ordem de prioridade de `CONFIGURACOES`. **Sem nomes, roda todas,
-  inclusive as da etapa direta**: numa pasta só da OAB, isso refaz a etapa direta; passe os nomes.
+- `--rodada` é obrigatório. Com nomes, roda só esses, sempre na ordem de prioridade de `CONFIGURACOES`.
+  **Sem nomes, o comando sai com erro:** rodar todas, inclusive as da etapa direta, exige `--todas`
+  explícito (numa pasta só da OAB, isso refaria a etapa direta).
 - `--piloto N`: só as N primeiras perguntas do primeiro contexto de cada configuração (as sem memória
   rodam completas, porque o portão precisa delas) e grava `projecao.md` na pasta da rodada. A projeção
   supõe todos os contextos do tamanho do primeiro (na H1 da OAB, sai baixa no contexto longo).
 - `--usar-reserva` libera os US$ 4 guardados da OpenAI em dois momentos: durante a janela de depuração
   da etapa direta, se ela não reproduzir (até US$ 4, Task 13), e nas secundárias da OAB, só depois que
   a etapa direta reproduzir ou a janela fechar (Task 14).
-- `--haiku-h2 {1m,600k}`: sem nomes, escolhe a variante do contexto longo do Haiku na H2 (padrão `1m`).
+- `--haiku-h2 {1m,600k}`: com `--todas`, escolhe a variante do contexto longo do Haiku na H2 (padrão `1m`).
   Com nomes, a variante escolhida tem de estar entre eles e a outra não; senão o comando sai com erro
   (nunca roda uma variante diferente da pedida).
-- O teto de um provedor pula só as configurações seguintes daquele provedor (o embedding conta como
-  OpenAI). Uma exceção inesperada numa configuração vira `status=falhou: ...` e a rodada segue; o gasto
-  do livro-caixa é impresso sempre no fim.
+- O teto de um provedor, ou o limite do painel (429 `insufficient_quota` na OpenAI; saldo ou limite de
+  uso/gasto na Anthropic; sem as esperas de 60 s), para a configuração e pula de antemão só as seguintes
+  cujo **leitor** é daquele provedor. As de leitor Haiku com embedding da OpenAI ainda tentam: o
+  livro-caixa decide a cada chamada. Uma exceção inesperada numa configuração vira `status=falhou: ...` e
+  a rodada segue; uma falha ao gravar o livro-caixa (`ErroDoLivroCaixa`, depois de 5 tentativas) para a
+  rodada inteira. O gasto do livro-caixa é impresso sempre no fim.
 - O portão do Haiku: `oab-h2-lc-haiku*` só roda se o `oab-sem-memoria-haiku.jsonl` **da mesma pasta de
   rodada** tiver resposta final para todas as 224 questões de teste da H2 (2024 e 2025) e acertar menos
   de 90% delas; linha de base ausente ou parcial bloqueia.
-- O `custo_usd` das linhas não inclui os embeddings (centavos); o livro-caixa inclui.
+- O `custo_usd` das linhas não inclui os embeddings (centavos), nem a parte OpenAI das configurações de
+  embedding com o Haiku de leitor; o livro-caixa inclui.
+- `analise` marca "parcial (x de N)" a configuração em que alguma pergunta esperada não tem resposta
+  final, e não dá veredito nem teste de reprodução para ela. As perguntas esperadas vêm de
+  `carregar_conjunto` (precisa de `dados/oab/` e do dataset do autor em `dados/autor/`).
 
 Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_URL`
 (`https://gqnejwbuloklbelsufnj.supabase.co`), `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`,
@@ -139,6 +155,15 @@ Segredos em `.env` (ignorado pelo git, ver `.gitignore` desta pasta): `SUPABASE_
 - **Dados da OAB:** 18 questões com menos de quatro alternativas; nenhuma anulada marcada; prova
   2018-01 quase igual à 2018-25; `2022-02-3` e `2022-02-3-fixed`; rótulos de matéria pouco confiáveis
   depois de 2018; o CPC do corpus vem de uma edição de 2016 e tem um "artigo" de 12.841 tokens.
+- **MCC: o `acerto` gravado no JSONL é o `exact_match` estrito** do README, que conta "label: 43" como
+  erro. A métrica primária (veredito, reprodução, secundárias) é `metricas.exact_match_flexivel`,
+  aplicada em `analise.py` (Decisões do piloto, no desenho). Somar `acerto` à mão nas MCC dá ~0.
+- **O tiktoken baixa os arquivos BPE no primeiro uso** (`o200k_base`, `cl100k_base`). Com o cache frio e
+  sem rede, os testes dos clientes e do rodador falham: o gate offline precisa do cache aquecido uma vez
+  (comando de preparo acima).
+- **`resultados/livro_caixa.json` é versionado:** nunca `git stash`, `git checkout -- .` nem
+  `git reset --hard` com ele modificado; ele voltaria calado e o teto valeria sobre um gasto menor que o
+  real. O rodador se recusa a começar nesse caso, mas o conserto é restaurar o arquivo.
 - No Windows, saída redirecionada estraga os acentos; rode com `PYTHONUTF8=1`. `python -I` ignora as
   variáveis `PYTHON*`, inclusive essa. Os dados no banco estão íntegros: o "�" é só o console.
 

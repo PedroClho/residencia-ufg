@@ -771,13 +771,14 @@ git commit -m "feat: reclassificação de matéria das provas de 2018 a 2023"
     - `sem_memoria`: chama o cliente direto com `SYSTEM_SEM_MEMORIA` e `TEMPLATE_SEM_MEMORIA`.
     - Grava uma linha por pergunta em `pasta/{nome}.jsonl`.
     - Pula perguntas que já têm linha sem `erro`; linhas com `erro` são refeitas e substituídas.
-    - `LimiteDeGasto` termina com `status="parada: teto"`.
+    - `LimiteDeGasto` termina com `status="parada: teto"`; `LimiteDoPainel` (cota, saldo ou trava do painel, sem esperar) com `status="parada: limite do painel"`.
   - Esquema da linha: `{"configuracao", "fonte", "contexto_id", "pergunta_id", "ano", "consulta", "gabarito", "saida", "acerto", "metricas", "tokens_entrada", "tokens_cacheados", "tokens_escritos_cache", "tokens_saida", "custo_usd", "erro"}`.
   - `portao_haiku_h2(pasta: Path) -> tuple[bool, float]`: acurácia do `oab-sem-memoria-haiku` nas perguntas de 2024 e 2025; libera se for menor que 0,90.
   - `projecao(linhas: list[dict], n_contextos: int, n_perguntas: int) -> float` = `custo da primeira linha × n_contextos + média das demais × (n_perguntas − n_contextos)`
-  - `main(argv=None) -> int` com a CLI `python -m replica.rodar [NOMES ...] [--rodada DIR] [--piloto N] [--usar-reserva] [--haiku-h2 {1m,600k}]`:
-    - Sem nomes, roda todas na ordem, incluindo só a variante do Haiku H2 escolhida (padrão `1m`) e aplicando o portão.
-    - Teto de um provedor pula só as configurações daquele provedor.
+  - `main(argv=None) -> int` com a CLI `python -m replica.rodar (NOMES ... | --todas) --rodada DIR [--piloto N] [--usar-reserva] [--haiku-h2 {1m,600k}]`:
+    - `--rodada` é obrigatório. Sem nomes, só com `--todas` (revisão final: o comando sem nomes refazia a etapa direta); `--todas` roda todas na ordem, incluindo só a variante do Haiku H2 escolhida (padrão `1m`) e aplicando o portão.
+    - Teto (ou limite do painel) de um provedor pula de antemão só as configurações cujo leitor é daquele provedor; as de leitor Haiku com embedding tentam, e o livro-caixa decide a cada chamada.
+    - Um rodador por vez (trava `resultados/.rodador.lock`) e, antes de gastar, recusa um livro-caixa abaixo da soma dos `custo_usd` já gravados em `resultados/`.
     - `--piloto N` limita cada configuração a N perguntas (as primeiras do primeiro contexto) e grava `projecao.md` com o custo projetado por configuração e por provedor.
     - No fim, imprime o gasto do livro-caixa.
 
@@ -982,7 +983,7 @@ Já conferido pelo Pedro em 2026-11-10: a conta da Anthropic tem limite de 2 mil
 
 - [ ] **Step 3: Rodar o piloto**
 
-Run: `PYTHONUTF8=1 uv run python -m replica.rodar --piloto 10 --rodada resultados/piloto-2026MMDD`
+Run: `PYTHONUTF8=1 uv run python -m replica.rodar --todas --piloto 10 --rodada resultados/piloto-2026MMDD`
 Expected:
 - Uma linha por configuração com `feitas: 10` (as sem memória rodam completas; o portão precisa delas).
 - `projecao.md` gravado.
@@ -1045,8 +1046,12 @@ Expected: 300 linhas na H1, até 229 na H2 e ~3.377 nas sem memória, com `erros
 
 - [ ] **Step 2: Rodar as secundárias**
 
-Run: `PYTHONUTF8=1 uv run python -m replica.rodar --rodada resultados/2026MMDD-oab --haiku-h2 <decisão do piloto>`. Acrescente `--usar-reserva` só se a Task 13 reproduziu ou fechou a janela de depuração.
-Expected: as configurações rodam até o teto de cada provedor. O que parar por teto aparece como `parada: teto` e vai para as limitações do documento.
+As secundárias da OAB são as configurações 12 a 23, com só a variante do Haiku H2 da decisão do piloto (`1m`, registrada no desenho). Os nomes vão explícitos: o rodador sem nomes se recusa a rodar (só com `--todas`, que refaria a etapa direta).
+
+Run: `PYTHONUTF8=1 uv run python -m replica.rodar oab-h1-emb-4omini oab-h1-bm25-haiku oab-h1-emb-haiku oab-h1-bm25-4omini-k2 oab-h1-bm25-4omini-k5 oab-h1-bm25-4omini-k20 oab-h1corpus-bm25-4omini oab-h2-bm25-haiku oab-h1-lc-haiku oab-h2-lc-haiku oab-h2-emb-4omini oab-h2-emb-haiku --haiku-h2 1m --rodada resultados/2026MMDD-oab`. Com a decisão `600k`, troque `oab-h2-lc-haiku` por `oab-h2-lc-haiku-600k` e `--haiku-h2 1m` por `--haiku-h2 600k`. Acrescente `--usar-reserva` só se a Task 13 reproduziu ou fechou a janela de depuração.
+
+Por último, a configuração 24 (`direta-mcc-emb-4omini`, a reprodução das MCC por embedding) roda na pasta da etapa direta, com o que sobrar da OpenAI: `PYTHONUTF8=1 uv run python -m replica.rodar direta-mcc-emb-4omini --rodada resultados/2026MMDD-direta` (com `--usar-reserva` nas mesmas condições).
+Expected: as configurações rodam até o teto de cada provedor. O que parar por teto aparece como `parada: teto` (ou `parada: limite do painel`, se a trava do painel disparar antes) e vai para as limitações do documento.
 
 - [ ] **Step 3: Analisar**
 

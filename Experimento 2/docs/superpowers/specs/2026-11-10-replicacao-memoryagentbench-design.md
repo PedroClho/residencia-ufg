@@ -38,7 +38,8 @@ Achado (1) do artigo, §4.2: "superioridade dos métodos RAG na recuperação pr
 - **OAB:** 300 questões sorteadas das provas de 2018 a 2023, estratificadas por matéria (ver §5). O
   agente de contexto longo recebe a lei da matéria inteira (ou o que couber na janela). Os agentes RAG recuperam artigos dessa mesma
   lei. Assim os dois têm a mesma memória e diferem só em como a leem, que é o ponto do artigo.
-  Variante secundária, barata: o RAG sobre o corpus inteiro, que é o uso realista.
+  Variante secundária, barata: o RAG BM25 sobre o corpus inteiro, que é o uso realista (só com BM25:
+  item 9 das Correções, abaixo).
 
 ### H2. O contexto longo vence o RAG quando é preciso aprender com exemplos
 
@@ -46,7 +47,9 @@ Achado (2) do artigo, §4.2: "superioridade dos modelos de contexto longo no apr
 teste".
 
 - **Direta:** as cinco tarefas de classificação multiclasse (MCC) do artigo (BANKING77, CLINC150,
-  NLU, TREC grosso e TREC fino), com 100 perguntas cada, métrica `exact_match` estrito, sem juiz.
+  NLU, TREC grosso e TREC fino), com 100 perguntas cada, sem juiz. A métrica do desenho era o
+  `exact_match` estrito; depois do piloto, a primária passou a ser a leitura flexível de `label:`, com o
+  estrito ao lado (ver Decisões do piloto, na §6).
   No artigo, a média das cinco (Tabela 3): GPT-4o-mini com contexto longo 82,0; BM25 75,4; os
   números por dataset estão na Tabela 7. Mudou de BANKING77 e CLINC150 para as cinco: ver item 7 de
   "Correções depois da leitura do código do autor (2026-11-10)".
@@ -59,7 +62,7 @@ teste".
 
 - **Quatro dos seis modelos de contexto longo.** Claude 3.7 Sonnet e Gemini 2.0 Flash já saíram do
   ar, o GPT-5-mini sai em 2026-12-11, e o GPT-4o custaria sozinho mais que o teto. O GPT-4.1-mini
-  fica opcional.
+  também ficou fora: a configuração mais barata dele passaria de US$ 4 (item 11 das Correções).
 - **A metade "compreensão de longo alcance" do achado (2).** A tarefa de resumo depende do GPT-4o
   como juiz, que também sai do ar, e o Detective QA tem só 71 perguntas.
 - **O achado (3), esquecimento seletivo** (no multi-hop, nenhum método passa de 28%). Fica fora por
@@ -106,7 +109,7 @@ teste".
 | RAG BM25, leitor GPT-4o-mini | sim | sim | sim |
 | RAG `text-embedding-3-small`, leitor GPT-4o-mini | sim | sim | sim |
 | RAG BM25 e embedding, leitor Haiku 5.5 | não | sim | sim |
-| Contexto longo, GPT-4.1-mini (opcional) | só se sobrar orçamento | não | não |
+| Contexto longo, GPT-4.1-mini | não (item 11 das Correções) | não | não |
 
 - **Modelos.** O GPT-4o-mini é o modelo de todos os agentes RAG do artigo e o par da comparação
   central; é a replicação fiel mínima. O Haiku 5.5 é a extensão atual: substitui os modelos de
@@ -238,13 +241,16 @@ Travas obrigatórias:
 2. **Piloto primeiro:** ~10 questões por configuração, para medir tokens reais e confirmar que o cache
    pega (`cached_tokens` na OpenAI, `cache_read_input_tokens` na Anthropic). Só depois a rodada
    completa.
-3. **Ordem por prioridade:**
-   1. As rodadas das comparações primárias (contexto longo e BM25 do GPT-4o-mini), primeiro na etapa
-      direta e depois na OAB.
-   2. Sem memória.
-   3. As secundárias baratas (RAG por embedding, ablação de k, RAG do Haiku).
-   4. O contexto longo do Haiku.
-   5. O GPT-4.1-mini opcional.
+3. **Ordem por prioridade** (com os itens 10 e 11 das Correções; é a ordem de `CONFIGURACOES`):
+   1. A etapa direta: as primárias (contexto longo e BM25 do GPT-4o-mini) e a reprodução do MH-QA por
+      embedding.
+   2. Sem memória, nos dois modelos: o portão do Haiku depende dela, e custa ~US$ 0,50.
+   3. As primárias da OAB (contexto longo e BM25 do GPT-4o-mini, na H1 e na H2).
+   4. As secundárias baratas (RAG por embedding na H1, RAG do Haiku, ablação de k, corpus inteiro).
+   5. O contexto longo do Haiku, e depois o RAG por embedding na H2.
+   6. A reprodução das MCC por embedding, a última.
+
+   O GPT-4.1-mini não entra (item 11 das Correções).
 
    Se o livro-caixa cortar algo, corta do fim da lista.
 4. **Portões do Haiku**, decididos antes de qualquer rodada cara dele:
@@ -270,7 +276,9 @@ Travas obrigatórias:
 ### Decisões do piloto (2026-11-10)
 
 O piloto (`resultados/piloto-20261110/`, 10 perguntas por configuração; as sem memória completas)
-gastou US$ 1,04 na OpenAI e US$ 1,47 na Anthropic, sem nenhum erro de API. Decisões tomadas pelo
+gastou ~US$ 0,86 na OpenAI (US$ 0,84 nas linhas mais os embeddings) e US$ 1,47 na Anthropic, sem nenhum
+erro de API. O livro-caixa da OpenAI marcava US$ 1,04 ao fim do piloto porque soma também os ~US$ 0,17
+das duas rodadas da reclassificação de matéria. Decisões tomadas pelo
 Claude, que executou o plano sem o Pedro na sessão; cada uma está registrada para o Pedro rever.
 
 - **Cache confirmado.** Nas seis configurações de contexto longo, as chamadas 2 a 10 vieram com 99% a
