@@ -8,9 +8,9 @@ import re
 import sys
 
 from replica import oab
-from replica.arquivos import gravar_json, ler_json
+from replica.arquivos import TravaOcupada, gravar_json, ler_json, trava_exclusiva
 from replica.clientes import ClienteOpenAI
-from replica.config import DADOS, LIVRO_CAIXA, MODELO_OPENAI, RAIZ, SEMENTE
+from replica.config import DADOS, LIVRO_CAIXA, MODELO_OPENAI, RAIZ, SEMENTE, TRAVA_RODADOR
 from replica.livro_caixa import LivroCaixa
 from replica.oab import MATERIA_PARA_LEIS, MATERIAS_FORA_H1, formatar_questao
 
@@ -115,6 +115,15 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--semente", type=int, default=SEMENTE)
     args = ap.parse_args(argv)
+    try:
+        with trava_exclusiva(TRAVA_RODADOR):  # a mesma trava do rodador: um processo por vez no livro-caixa
+            return _reclassificar_com_trava(args)
+    except TravaOcupada as e:
+        print(e, file=sys.stderr)
+        return 2
+
+
+def _reclassificar_com_trava(args) -> int:
     todas = ler_json(DADOS / "atlas" / "questoes_oab.json")
     qs = oab.deduplicar([q for q in todas if oab.questao_valida(q) and 2018 <= int(q["ano"]) <= 2023])
     livro = LivroCaixa(LIVRO_CAIXA)

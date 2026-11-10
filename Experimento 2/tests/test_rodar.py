@@ -1,5 +1,8 @@
 """Rodador: prioridade, retomada, teto por provedor, portão do Haiku e piloto. Nenhum teste chama API."""
+import io
 import math
+import os
+import sys
 
 import pytest
 from pytest import approx
@@ -9,7 +12,7 @@ from replica.arquivos import anexar_jsonl, ler_jsonl
 from replica.clientes import ClienteAnthropic, ClienteEmbeddings, ClienteOpenAI
 from replica.config import FATOR_TOKENS_HAIKU, JANELA_HAIKU, PROVEDOR
 from replica.conjuntos import Contexto, Pergunta
-from replica.livro_caixa import LivroCaixa
+from replica.livro_caixa import ErroDoLivroCaixa, LivroCaixa
 from replica.rodar import (
     CONFIGURACOES,
     agent_config,
@@ -542,3 +545,183 @@ def test_main_imprime_o_gasto_mesmo_quando_algo_quebra(tmp_path, monkeypatch, ca
     with pytest.raises(OSError):
         main(["oab-sem-memoria-4omini", "--piloto", "1", "--rodada", str(tmp_path / "r")])
     assert "gasto no livro-caixa" in capsys.readouterr().out
+    assert not rodar.TRAVA_RODADOR.exists()  # a trava sai mesmo quando algo quebra
+
+
+# --- main: --rodada obrigatório e nomes ou --todas ---
+
+@pytest.fixture
+def executar_falso(monkeypatch):
+    """Troca `executar` por um que só anota os nomes das configurações (e o que estava na trava)."""
+    chamadas = []
+
+    def falso(cfgs, *a, **k):
+        trava = rodar.TRAVA_RODADOR
+        chamadas.append({"nomes": [c.nome for c in cfgs],
+                         "trava": trava.read_text(encoding="utf-8") if trava.exists() else None})
+        return []
+
+    monkeypatch.setattr(rodar, "executar", falso)
+    return chamadas
+
+
+def test_main_exige_rodada(executar_falso, capsys):
+    with pytest.raises(SystemExit) as e:
+        main(["oab-sem-memoria-4omini"])
+    assert e.value.code == 2 and "--rodada" in capsys.readouterr().err and executar_falso == []
+
+
+def test_main_sem_nomes_exige_todas(tmp_path, executar_falso, capsys):
+    rodada = ["--rodada", str(tmp_path / "r")]
+    assert main(rodada) == 2
+    assert "--todas" in capsys.readouterr().err and executar_falso == []
+    assert main(["oab-sem-memoria-4omini", "--todas", *rodada]) == 2  # os dois juntos é ambíguo
+    assert executar_falso == []
+    assert main(["--todas", *rodada]) == 0
+    nomes = executar_falso[0]["nomes"]
+    assert len(nomes) == 24 and "oab-h2-lc-haiku" in nomes and "oab-h2-lc-haiku-600k" not in nomes
+    assert main(["--todas", "--haiku-h2", "600k", *rodada]) == 0
+    nomes = executar_falso[1]["nomes"]
+    assert "oab-h2-lc-haiku-600k" in nomes and "oab-h2-lc-haiku" not in nomes
+
+
+# --- main: trava exclusiva ---
+
+def test_main_recusa_com_a_trava_presente_e_nao_a_apaga(tmp_path, executar_falso, capsys):
+    trava = rodar.TRAVA_RODADOR
+    trava.parent.mkdir(parents=True, exist_ok=True)
+    trava.write_text("pid 123", encoding="utf-8")
+    assert main(["oab-sem-memoria-4omini", "--rodada", str(tmp_path / "r")]) == 2
+    err = capsys.readouterr().err
+    assert "apague" in err and str(trava) in err and executar_falso == []
+    assert trava.read_text(encoding="utf-8") == "pid 123"
+
+
+def test_main_pega_e_solta_a_trava(tmp_path, executar_falso):
+    assert main(["oab-sem-memoria-4omini", "--rodada", str(tmp_path / "r")]) == 0
+    assert str(os.getpid()) in executar_falso[0]["trava"]  # durante a rodada, a trava tem o pid
+    assert not rodar.TRAVA_RODADOR.exists()
+
+
+# --- main: livro-caixa conferido contra as linhas gravadas ---
+
+def _linha_paga(nome, pid, custo):
+    return {"configuracao": nome, "pergunta_id": pid, "custo_usd": custo, "erro": None}
+
+
+def test_soma_das_linhas_conta_copia_uma_vez_e_ignora_desconhecidas(tmp_path):
+    for pasta in ("piloto", "oab"):  # a linha de base reaproveitada: o mesmo arquivo em duas pastas
+        anexar_jsonl(tmp_path / pasta / "oab-sem-memoria-haiku.jsonl", _linha_paga("oab-sem-memoria-haiku", "1", 0.25))
+    anexar_jsonl(tmp_path / "oab" / "outra.jsonl", _linha_paga("nao-existe", "1", 9.0))
+    for pid in ("1", "2"):
+        anexar_jsonl(tmp_path / "oab" / "oab-h1-emb-haiku.jsonl", _linha_paga("oab-h1-emb-haiku", pid, 0.5))
+        anexar_jsonl(tmp_path / "oab" / "oab-h1-lc-4omini.jsonl", _linha_paga("oab-h1-lc-4omini", pid, 0.125))
+    assert rodar.soma_das_linhas(tmp_path) == approx({"openai": 0.25, "anthropic": 1.25})
+
+
+def test_main_recusa_livro_caixa_abaixo_das_linhas(tmp_path, executar_falso, resultados_isolados, capsys):
+    anexar_jsonl(resultados_isolados / "a" / "oab-sem-memoria-4omini.jsonl",
+                 _linha_paga("oab-sem-memoria-4omini", "1", 0.30))
+    anexar_jsonl(resultados_isolados / "a" / "oab-sem-memoria-haiku.jsonl",
+                 _linha_paga("oab-sem-memoria-haiku", "1", 0.20))
+    livro = LivroCaixa(rodar.LIVRO_CAIXA)
+    livro.registrar("anthropic", 0.20)
+    livro.registrar("openai", 0.10)  # revertido (git stash, checkout): menos que os 0,30 das linhas
+    assert main(["oab-sem-memoria-4omini", "--rodada", str(tmp_path / "r")]) == 2
+    err = capsys.readouterr().err
+    assert "openai" in err and "0.3000" in err and "0.1000" in err and "anthropic" not in err
+    assert executar_falso == [] and not rodar.TRAVA_RODADOR.exists()
+
+
+def test_conferencia_do_livro_caixa_tem_tolerancia(tmp_path):
+    anexar_jsonl(tmp_path / "a" / "oab-sem-memoria-4omini.jsonl", _linha_paga("oab-sem-memoria-4omini", "1", 0.3))
+    livro = LivroCaixa(tmp_path / "livro.json")
+    livro.registrar("openai", 0.3 - 5e-7)  # arredondamento: passa
+    assert rodar.conferir_livro_caixa(livro, tmp_path) == []
+    livro.registrar("openai", -2e-6)
+    problemas = rodar.conferir_livro_caixa(livro, tmp_path)
+    assert len(problemas) == 1 and "openai" in problemas[0]
+
+
+def test_main_retoma_com_o_livro_caixa_igual_as_linhas(monkeypatch, resultados_isolados):
+    fake = FakeOpenAI(lambda kw: ("B", dict(prompt=123, cached=7, completion=1)))
+    monkeypatch.setattr(rodar, "carregar_conjunto", lambda cfg: contextos_sem_memoria(7))
+    monkeypatch.setattr(rodar, "fabricar_cliente",
+                        lambda modelo, livro, temperatura: ClienteOpenAI(modelo, livro, temperatura, bruto=fake))
+    rodada = ["--rodada", str(resultados_isolados / "r")]  # a rodada dentro de resultados/, como na vida real
+    assert main(["oab-sem-memoria-4omini", *rodada]) == 0
+    assert main(["oab-sem-memoria-4omini", *rodada]) == 0  # o livro-caixa bate com as linhas: retoma
+    assert len(fake.chamadas) == 7
+
+
+# --- erro fatal do livro-caixa ---
+
+class _LivroQueNaoGrava(LivroCaixa):
+    def registrar(self, provedor, custo):
+        raise ErroDoLivroCaixa(f"não gravei US$ {custo:.4f} da {provedor}")
+
+
+def test_falha_do_livro_caixa_para_a_rodada_inteira(tmp_path):
+    livro = _LivroQueNaoGrava(tmp_path / "livro.json")
+    fake_openai, fake_anthropic = FakeOpenAI(), FakeAnthropic()
+    cfgs = [POR_NOME["oab-sem-memoria-4omini"], POR_NOME["oab-sem-memoria-haiku"]]
+    with pytest.raises(ErroDoLivroCaixa):
+        executar(cfgs, tmp_path, lambda cfg: contextos_sem_memoria(3), fabrica(livro, fake_openai, fake_anthropic),
+                 None)
+    assert len(fake_openai.chamadas) == 1 and fake_anthropic.chamadas == []
+    assert ler_jsonl(tmp_path / "oab-sem-memoria-4omini.jsonl") == []  # nada gravado como erro de API
+
+
+def test_main_para_com_erro_do_livro_caixa(tmp_path, monkeypatch, capsys):
+    def executar_que_quebra(*a, **k):
+        raise ErroDoLivroCaixa("não gravei US$ 0.0100 da openai")
+
+    monkeypatch.setattr(rodar, "executar", executar_que_quebra)
+    assert main(["oab-sem-memoria-4omini", "--rodada", str(tmp_path / "r")]) == 1
+    captura = capsys.readouterr()
+    assert "não gravei" in captura.err and "gasto no livro-caixa" in captura.out
+    assert not rodar.TRAVA_RODADOR.exists()
+
+
+# --- limite do painel e teto só pelo provedor do leitor ---
+
+def _carregar_misto(cfg):
+    return contextos_sem_memoria(3) if cfg.agente == "sem_memoria" else contextos_oab("oab_h1_00")
+
+
+def test_limite_do_painel_para_o_provedor_como_o_teto(tmp_path):
+    livro = LivroCaixa(tmp_path / "livro.json")
+
+    def cota(kw):
+        raise RuntimeError("Error code: 429 - {'error': {'code': 'insufficient_quota'}}")
+
+    fake_openai, fake_anthropic = FakeOpenAI(cota), FakeAnthropic()
+    cfgs = [POR_NOME["oab-sem-memoria-4omini"], POR_NOME["oab-sem-memoria-haiku"], POR_NOME["oab-h1-bm25-4omini"]]
+    rs = executar(cfgs, tmp_path, _carregar_misto, fabrica(livro, fake_openai, fake_anthropic), None)
+    assert [r["status"] for r in rs] == ["parada: limite do painel", "completa", "pulada: limite do painel (openai)"]
+    assert rs[0]["provedor_teto"] == "openai" and len(fake_openai.chamadas) == 1 and len(fake_anthropic.chamadas) == 3
+    assert ler_jsonl(tmp_path / "oab-sem-memoria-4omini.jsonl") == []  # nada de [erro: api] para refazer
+
+
+def test_teto_da_openai_nao_pula_o_haiku_com_embedding(tmp_path):
+    livro = LivroCaixa(tmp_path / "livro.json", tetos={"openai": 1.0, "anthropic": 29.5},
+                       reserva={"openai": 0.0, "anthropic": 0.0})
+    livro.registrar("openai", 1.0 - 1e-5)  # cabem embeddings pequenos, não cabe uma chamada do GPT-4o-mini
+    fake_openai, fake_anthropic = FakeOpenAI(), FakeAnthropic()
+    cfgs = [POR_NOME["oab-sem-memoria-4omini"], POR_NOME["oab-h1-emb-haiku"], POR_NOME["oab-h1-bm25-4omini"]]
+    rs = executar(cfgs, tmp_path, _carregar_misto, fabrica(livro, fake_openai, fake_anthropic),
+                  ClienteEmbeddings(livro, bruto=fake_openai))
+    assert [r["status"] for r in rs] == ["parada: teto", "completa", "pulada: teto (openai)"]
+    assert fake_openai.chamadas == [] and fake_openai.chamadas_embeddings and len(fake_anthropic.chamadas) == 2
+
+
+# --- saída que não derruba a rodada ---
+
+def test_main_nao_morre_com_caractere_fora_do_cp1252(tmp_path, monkeypatch):
+    saida = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    erros = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", saida)
+    monkeypatch.setattr(sys, "stderr", erros)
+    assert main(["nao-existe-✓", "--rodada", str(tmp_path / "r")]) == 2
+    erros.flush()
+    assert b"nao-existe-\\u2713" in erros.buffer.getvalue()

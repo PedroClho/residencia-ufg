@@ -73,6 +73,21 @@ class FakeAnthropic:
         )
 
 
+@pytest.fixture(autouse=True)
+def resultados_isolados(tmp_path, monkeypatch):
+    """Nenhum teste toca o `resultados/` de verdade: livro-caixa, trava e pasta de resultados do rodador e da
+    reclassificação apontam para `tmp_path/resultados`."""
+    import replica.reclassificar as reclassificar
+    import replica.rodar as rodar
+
+    pasta = tmp_path / "resultados"
+    for modulo in (rodar, reclassificar):
+        monkeypatch.setattr(modulo, "LIVRO_CAIXA", pasta / "livro_caixa.json")
+        monkeypatch.setattr(modulo, "TRAVA_RODADOR", pasta / ".rodador.lock")
+    monkeypatch.setattr(rodar, "RESULTADOS", pasta)
+    return pasta
+
+
 @pytest.fixture
 def livro(tmp_path):
     return LivroCaixa(tmp_path / "livro_caixa.json")

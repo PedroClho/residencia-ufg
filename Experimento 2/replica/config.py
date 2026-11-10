@@ -5,6 +5,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 DADOS = RAIZ / "dados"
 RESULTADOS = RAIZ / "resultados"
 LIVRO_CAIXA = RESULTADOS / "livro_caixa.json"
+# Trava exclusiva de quem gasta (rodar e reclassificar): um processo por vez no livro-caixa.
+TRAVA_RODADOR = RESULTADOS / ".rodador.lock"
 
 MODELO_OPENAI = "gpt-4o-mini"
 MODELO_ANTHROPIC = "claude-haiku-5-5"

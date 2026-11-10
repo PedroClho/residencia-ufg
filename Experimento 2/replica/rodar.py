@@ -1,10 +1,12 @@
 """Rodador: configurações em ordem de prioridade, retomada, piloto, portão do Haiku e teto por provedor.
 
-Uso: `python -m replica.rodar [NOMES ...] [--rodada DIR] [--piloto N] [--usar-reserva] [--haiku-h2 {1m,600k}]`.
+Uso: `python -m replica.rodar (NOMES ... | --todas) --rodada DIR [--piloto N] [--usar-reserva]
+[--haiku-h2 {1m,600k}]`.
 
 Cada configuração grava uma linha JSONL por pergunta em `{rodada}/{nome}.jsonl`, logo depois de cada
 resposta. Rodar o mesmo comando de novo retoma: pula as perguntas que já têm linha sem erro e refaz as
-que têm erro. Nunca rode dois rodadores ao mesmo tempo: o arquivo do livro-caixa não tem trava.
+que têm erro. Um rodador por vez: `main` pega a trava `resultados/.rodador.lock` e se recusa a começar se
+ela existe; antes de gastar, confere que o livro-caixa não está abaixo da soma das linhas já gravadas.
 """
 import argparse
 import json
@@ -16,7 +18,7 @@ import traceback
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from replica.arquivos import anexar_jsonl
+from replica.arquivos import TravaOcupada, anexar_jsonl, saida_tolerante, trava_exclusiva
 from replica.autor.agente import AgentWrapper
 from replica.autor.metricas import chunk_text_into_sentences
 from replica.avaliacao import avaliar
@@ -30,9 +32,10 @@ from replica.config import (
     MODELO_OPENAI,
     PROVEDOR,
     RESULTADOS,
+    TRAVA_RODADOR,
 )
 from replica.conjuntos import Contexto, Pergunta, carregar_autor, carregar_oab
-from replica.livro_caixa import LimiteDeGasto, LivroCaixa
+from replica.livro_caixa import ErroDoLivroCaixa, LimiteDeGasto, LimiteDoPainel, LivroCaixa
 from replica.templates_oab import SYSTEM_SEM_MEMORIA, TEMPLATE_SEM_MEMORIA, obter_template
 
 LIMIAR_PORTAO = 0.90
@@ -164,14 +167,6 @@ def carregar_conjunto(cfg: Configuracao) -> list[Contexto]:
     raise ValueError(f"conjunto desconhecido: {cfg.conjunto}")
 
 
-def provedores(cfg: Configuracao) -> set[str]:
-    """Provedores que a configuração usa: o do leitor e, no RAG de embedding, o dos embeddings (OpenAI)."""
-    usados = {PROVEDOR[cfg.modelo]}
-    if cfg.agente == EMB:
-        usados.add(PROVEDOR[MODELO_EMBEDDING])
-    return usados
-
-
 # --- JSONL da configuração: retomada com uma linha por pergunta ---
 
 def _ler_linhas(caminho: Path) -> tuple[list[dict], bool]:
@@ -280,7 +275,8 @@ def _memorizar(cfg: Configuracao, contexto: Contexto, cliente, embeddings) -> Ag
 
 def _perguntar(cfg: Configuracao, contexto: Contexto, pergunta: Pergunta, cliente,
                agente: AgentWrapper | None) -> tuple[str, dict]:
-    """`(consulta, saída)`. Uma exceção inesperada vira saída com `erro` e a rodada segue; o teto propaga."""
+    """`(consulta, saída)`. Uma exceção inesperada vira saída com `erro` e a rodada segue; o teto (e o limite do
+    painel) e a falha do livro-caixa propagam."""
     if agente is None:
         consulta = TEMPLATE_SEM_MEMORIA.format(question=pergunta.texto)
     else:
@@ -291,7 +287,7 @@ def _perguntar(cfg: Configuracao, contexto: Contexto, pergunta: Pergunta, client
             saida["output"] = saida.pop("texto")
         else:
             saida = agente.send_message(consulta, memorizing=False, query_id=pergunta.id, context_id=contexto.id)
-    except LimiteDeGasto:
+    except (LimiteDeGasto, ErroDoLivroCaixa):
         raise
     except Exception as e:
         print(f"[erro] {cfg.nome}, pergunta {pergunta.id}: {e!r}", file=sys.stderr)
@@ -333,7 +329,9 @@ def rodar_configuracao(cfg: Configuracao, contextos: list[Contexto], fabricar, e
     - Linhas com erro de API (ou exceção) são refeitas; recusa e resposta vazia são respostas finais, contam
       como erro de resposta e não são refeitas. Ao fim, o arquivo fica com uma linha por pergunta.
     - `limite_perguntas`: só as N primeiras perguntas do primeiro contexto (piloto).
-    - `LimiteDeGasto` encerra com `status="parada: teto"` e `provedor_teto` com o provedor que estourou.
+    - `LimiteDeGasto` encerra com `status="parada: teto"` e `provedor_teto` com o provedor que estourou;
+      `LimiteDoPainel` (cota, saldo ou trava do painel) encerra igual, com `status="parada: limite do painel"`.
+    - `ErroDoLivroCaixa` propaga (para a rodada inteira), depois de compactar o arquivo.
 
     Devolve `{"nome", "feitas", "erros", "recusas", "custo_usd", "status", "provedor_teto"}`, com as perguntas do
     arquivo ao fim: `feitas` sem erro, `erros` de API (a refazer), `recusas` com recusa ou resposta vazia.
@@ -364,9 +362,11 @@ def rodar_configuracao(cfg: Configuracao, contextos: list[Contexto], fabricar, e
                 if i % 100 == 0:
                     print(f"{cfg.nome}: {i}/{len(pendentes)}, US$ {custo:.4f}", file=sys.stderr, flush=True)
     except LimiteDeGasto as e:
-        status = "parada: teto"
+        painel = isinstance(e, LimiteDoPainel)
+        status = "parada: limite do painel" if painel else "parada: teto"
         provedor_teto = getattr(e, "provedor", PROVEDOR[cfg.modelo])
-        print(f"{cfg.nome}: parada pelo teto de gasto ({e})", file=sys.stderr)
+        motivo = "pelo limite do painel do provedor" if painel else "pelo teto de gasto"
+        print(f"{cfg.nome}: parada {motivo} ({e})", file=sys.stderr)
     finally:
         # Uma falha aqui (ex.: PermissionError no os.replace) não pode esconder a exceção original nem perder
         # linhas: o arquivo fica como está, com as linhas anexadas, e a próxima execução compacta.
@@ -506,11 +506,11 @@ def _resultado_sem_rodar(cfg: Configuracao, pasta: Path, status: str) -> dict:
             "status": status, "provedor_teto": None}
 
 
-def _rodar_uma(cfg: Configuracao, pasta: Path, parados: set[str], conjuntos: dict[str, list[Contexto]],
+def _rodar_uma(cfg: Configuracao, pasta: Path, parados: dict[str, str], conjuntos: dict[str, list[Contexto]],
                carregar, fabricar, embeddings, piloto: int | None) -> dict:
-    tetos = sorted(provedores(cfg) & parados)
-    if tetos:
-        return _resultado_sem_rodar(cfg, pasta, f"pulada: teto ({', '.join(tetos)})")
+    leitor = PROVEDOR[cfg.modelo]
+    if leitor in parados:
+        return _resultado_sem_rodar(cfg, pasta, f"pulada: {parados[leitor]} ({leitor})")
     if cfg.conjunto not in conjuntos:
         conjuntos[cfg.conjunto] = carregar(cfg)
     contextos = conjuntos[cfg.conjunto]
@@ -521,7 +521,7 @@ def _rodar_uma(cfg: Configuracao, pasta: Path, parados: set[str], conjuntos: dic
     limite = None if piloto is None or cfg.agente == SEM else piloto
     r = rodar_configuracao(cfg, contextos, fabricar, embeddings, pasta, limite)
     if r["provedor_teto"]:
-        parados.add(r["provedor_teto"])
+        parados[r["provedor_teto"]] = r["status"].removeprefix("parada: ")
     return r
 
 
@@ -529,22 +529,27 @@ def executar(cfgs: list[Configuracao], pasta: Path, carregar, fabricar, embeddin
              piloto: int | None = None) -> list[dict]:
     """Roda as configurações na ordem dada e imprime uma linha de resumo por configuração.
 
-    - O teto de um provedor pula só as configurações seguintes que usam aquele provedor.
+    - O teto (ou o limite do painel) de um provedor pula de antemão só as configurações seguintes cujo leitor é
+      daquele provedor. As de leitor Haiku com embedding da OpenAI ainda tentam: o livro-caixa decide a cada
+      chamada, e um embedding sem saldo para a configuração ali.
     - O portão do Haiku é conferido logo antes de cada `oab-h2-lc-haiku*`, contra as questões dela.
     - `carregar(cfg)` é chamado uma vez por conjunto, e só para configurações que vão rodar.
     - Uma exceção inesperada numa configuração (dados ausentes, arquivo corrompido, bug) vira
-      `status="falhou: ..."`, com o traceback no stderr, e a rodada segue para a próxima.
+      `status="falhou: ..."`, com o traceback no stderr, e a rodada segue para a próxima. `ErroDoLivroCaixa`
+      não: propaga e para a rodada inteira.
     - Com `piloto`, cada configuração faz só as N primeiras perguntas do primeiro contexto (as sem memória
       rodam completas, porque o portão precisa delas) e no fim grava `projecao.md`.
     """
     pasta = Path(pasta)
     pasta.mkdir(parents=True, exist_ok=True)
-    parados: set[str] = set()
+    parados: dict[str, str] = {}  # provedor -> "teto" ou "limite do painel"
     conjuntos: dict[str, list[Contexto]] = {}
     resultados = []
     for cfg in cfgs:
         try:
             r = _rodar_uma(cfg, pasta, parados, conjuntos, carregar, fabricar, embeddings, piloto)
+        except ErroDoLivroCaixa:
+            raise
         except Exception as e:
             traceback.print_exc()
             r = _resultado_sem_rodar(cfg, pasta, f"falhou: {type(e).__name__}: {e}")
@@ -555,33 +560,106 @@ def executar(cfgs: list[Configuracao], pasta: Path, carregar, fabricar, embeddin
     return resultados
 
 
-def main(argv=None) -> int:
+# --- Conferência do livro-caixa contra as linhas gravadas ---
+
+TOLERANCIA_LIVRO = 1e-6
+_PROVEDOR_DO_LEITOR = {c.nome: PROVEDOR[c.modelo] for c in CONFIGURACOES}
+
+
+def soma_das_linhas(raiz: Path) -> dict[str, float]:
+    """Soma de `custo_usd` por provedor do leitor em `raiz/**/*.jsonl`.
+
+    - Linhas idênticas contam uma vez: são cópias entre pastas (a linha de base sem memória do piloto foi
+      reaproveitada na pasta da OAB), não chamadas pagas duas vezes.
+    - Linhas de configuração desconhecida ficam de fora; arquivo ilegível no meio fica de fora, com aviso.
+    - Os embeddings e a reclassificação não têm linha: o livro-caixa fica acima desta soma, nunca abaixo.
+    """
+    somas = {"openai": 0.0, "anthropic": 0.0}
+    vistas: set[str] = set()
+    for caminho in sorted(Path(raiz).rglob("*.jsonl")):
+        try:
+            linhas, _ = _ler_linhas(caminho)
+        except ValueError as e:
+            print(f"[aviso] {e}; fora da conferência do livro-caixa", file=sys.stderr)
+            continue
+        for linha in linhas:
+            provedor = _PROVEDOR_DO_LEITOR.get(linha.get("configuracao"))
+            chave = json.dumps(linha, sort_keys=True, ensure_ascii=False)
+            if provedor is None or chave in vistas:
+                continue
+            vistas.add(chave)
+            somas[provedor] += float(linha.get("custo_usd") or 0.0)
+    return somas
+
+
+def conferir_livro_caixa(livro: LivroCaixa, raiz: Path, tolerancia: float = TOLERANCIA_LIVRO) -> list[str]:
+    """Problemas (um por provedor) em que o livro-caixa está abaixo da soma das linhas de `raiz`. O livro-caixa
+    fica num caminho versionado: um `git stash`, `git checkout -- .` ou `git reset --hard` o reverte calado, e o
+    teto passaria a valer sobre um gasto menor que o real."""
+    problemas = []
+    for provedor, soma in soma_das_linhas(raiz).items():
+        gasto = livro.gasto(provedor)
+        if gasto < soma - tolerancia:
+            problemas.append(
+                f"{provedor}: o livro-caixa marca US$ {gasto:.4f}, abaixo dos US$ {soma:.4f} das linhas gravadas em "
+                f"{raiz}. Ele foi revertido (git stash, checkout ou reset?); restaure-o (git log -p "
+                f"{livro.caminho.name}) antes de rodar.")
+    return problemas
+
+
+def _criar_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m replica.rodar",
         description="Roda as configurações do experimento na ordem de prioridade, com retomada, teto de gasto "
                     "por provedor e portão do Haiku. Gasta dinheiro de verdade.",
     )
     parser.add_argument("nomes", nargs="*", metavar="NOMES",
-                        help="configurações a rodar, sempre na ordem de prioridade (padrão: todas, com só a "
-                             "variante do Haiku H2 de --haiku-h2)")
-    parser.add_argument("--rodada", type=Path, default=RESULTADOS / "rodada", metavar="DIR",
-                        help="pasta da rodada, com um .jsonl por configuração (padrão: resultados/rodada)")
+                        help="configurações a rodar, sempre na ordem de prioridade; sem nomes, exige --todas")
+    parser.add_argument("--todas", action="store_true",
+                        help="roda todas as configurações, inclusive as da etapa direta, com só a variante do "
+                             "Haiku H2 de --haiku-h2")
+    parser.add_argument("--rodada", type=Path, required=True, metavar="DIR",
+                        help="pasta da rodada, com um .jsonl por configuração (obrigatória)")
     parser.add_argument("--piloto", type=int, metavar="N",
                         help="só as N primeiras perguntas do primeiro contexto de cada configuração (as sem "
                              "memória rodam completas) e grava projecao.md")
     parser.add_argument("--usar-reserva", action="store_true", help="libera a reserva de US$ 4 da OpenAI")
     parser.add_argument("--haiku-h2", choices=sorted(VARIANTES_HAIKU_H2), default=None,
-                        help="variante do contexto longo do Haiku na H2. Sem nomes, escolhe qual entra "
+                        help="variante do contexto longo do Haiku na H2. Com --todas, escolhe qual entra "
                              "(padrão: 1m); com nomes, a variante tem de estar nos nomes, e a outra não")
+    return parser
+
+
+def main(argv=None) -> int:
+    saida_tolerante()
+    parser = _criar_parser()
     args = parser.parse_args(argv)
     if args.piloto is not None and args.piloto < 1:
         parser.error("--piloto precisa ser 1 ou mais")
+    if bool(args.nomes) == args.todas:
+        print("passe os nomes das configurações a rodar ou --todas (que roda tudo, inclusive a etapa direta), "
+              "não os dois nem nenhum", file=sys.stderr)
+        return 2
     try:
         cfgs = selecionar(args.nomes, args.haiku_h2)
     except ValueError as e:
         print(e, file=sys.stderr)
         return 2
+    try:
+        with trava_exclusiva(TRAVA_RODADOR):
+            return _rodar_com_trava(cfgs, args)
+    except TravaOcupada as e:
+        print(e, file=sys.stderr)
+        return 2
+
+
+def _rodar_com_trava(cfgs: list[Configuracao], args) -> int:
     livro = LivroCaixa(LIVRO_CAIXA, usar_reserva=args.usar_reserva)
+    problemas = conferir_livro_caixa(livro, RESULTADOS)
+    if problemas:
+        for p in problemas:
+            print(p, file=sys.stderr)
+        return 2
 
     def fabricar(modelo, temperatura):
         return fabricar_cliente(modelo, livro, temperatura)
@@ -592,9 +670,15 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         print("interrompido: rode o mesmo comando para retomar de onde parou", file=sys.stderr)
         codigo = 130
+    except ErroDoLivroCaixa as e:
+        print(f"[fatal] rodada parada: {e}", file=sys.stderr)
+        codigo = 1
     finally:
-        print(f"gasto no livro-caixa: OpenAI US$ {livro.gasto('openai'):.4f}, "
-              f"Anthropic US$ {livro.gasto('anthropic'):.4f}", flush=True)
+        try:
+            print(f"gasto no livro-caixa: OpenAI US$ {livro.gasto('openai'):.4f}, "
+                  f"Anthropic US$ {livro.gasto('anthropic'):.4f}", flush=True)
+        except Exception as e:
+            print(f"gasto no livro-caixa: ilegível ({e!r})", flush=True)
     return codigo
 
 

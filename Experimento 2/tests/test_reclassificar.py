@@ -185,3 +185,28 @@ def test_main_sobrescreve_conferencia_vazia(monkeypatch, tmp_path):
     arq.write_text("| 1 | x | a | b |  |\n", encoding="utf-8")
     assert rc.main([]) == 0
     assert not (arq.parent / "conferencia-materias-anterior.md").exists()
+
+
+def test_main_recusa_com_a_trava_do_rodador(monkeypatch, tmp_path, capsys):
+    _preparar_main(monkeypatch, tmp_path)
+    construidos = []
+    monkeypatch.setattr(rc, "ClienteOpenAI", lambda *a, **k: construidos.append(1) or _ClienteSempre())
+    trava = rc.TRAVA_RODADOR
+    trava.parent.mkdir(parents=True, exist_ok=True)
+    trava.write_text("pid 1", encoding="utf-8")
+    assert rc.main([]) == 2
+    assert "apague" in capsys.readouterr().err and construidos == [] and trava.exists()
+
+
+def test_main_segura_a_trava_enquanto_classifica(monkeypatch, tmp_path):
+    _preparar_main(monkeypatch, tmp_path)
+    vista = []
+
+    class ClienteQueOlhaATrava(_ClienteSempre):
+        def conversar(self, *a, **k):
+            vista.append(rc.TRAVA_RODADOR.exists())
+            return super().conversar(*a, **k)
+
+    monkeypatch.setattr(rc, "ClienteOpenAI", ClienteQueOlhaATrava)
+    assert rc.main([]) == 0
+    assert vista and all(vista) and not rc.TRAVA_RODADOR.exists()
