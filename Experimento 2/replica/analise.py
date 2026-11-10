@@ -1,7 +1,12 @@
 """Análise: bootstrap pareado, vereditos, teste de reprodução, tabela e gráfico qualidade × tokens.
 
 A regra de decisão foi registrada no desenho antes de rodar; este módulo só a aplica. Linhas com `erro`
-contam como resposta errada e são contadas à parte na tabela de custos.
+contam como resposta errada e são contadas à parte na tabela de custos. Uma configuração em que alguma
+pergunta esperada não tem resposta final (falta a linha, ou ela tem erro de API) sai "parcial (x de N)" em
+todas as seções, sem veredito nem teste de reprodução.
+
+Nas MCC, a acurácia primária é a leitura flexível de `label:` (`metricas.exact_match_flexivel`), não o
+`acerto` gravado no JSONL, que é o `exact_match` estrito (Decisões do piloto, no desenho).
 """
 import argparse
 import sys
@@ -9,9 +14,10 @@ from pathlib import Path
 
 import numpy as np
 
-from replica.arquivos import ler_jsonl
+from replica.arquivos import saida_tolerante
 from replica.config import FONTE_MHQA, MCC_FONTES, NUMEROS_ARTIGO, SEMENTE
-from replica.rodar import CONFIGURACOES, ERROS_FINAIS
+# A mesma leitura tolerante e a mesma regra de uma linha por pergunta da retomada do rodador.
+from replica.rodar import CONFIGURACOES, ERROS_FINAIS, _ler_linhas, _refazer, _uma_por_pergunta, carregar_conjunto
 
 PRIMARIAS = [
     ("H1 direta", "direta-mhqa-lc-4omini", "direta-mhqa-bm25-4omini", +1),
@@ -87,14 +93,54 @@ def reproduz(numero_artigo_pct: float, li: float, ls: float) -> bool:
 # ---------------------------------------------------------------- dados
 
 def carregar_rodada(pasta: Path) -> dict[str, list[dict]]:
-    """`{nome da configuração: linhas}` para cada `*.jsonl` da pasta."""
-    return {p.stem: ler_jsonl(p) for p in sorted(Path(pasta).glob("*.jsonl"))}
+    """`{nome da configuração: linhas}` para cada `*.jsonl` da pasta, lidos como o rodador lê na retomada: uma
+    última linha cortada é ignorada, e fica uma linha por pergunta (uma resposta final nunca é trocada por
+    uma linha a refazer)."""
+    return {p.stem: list(_uma_por_pergunta(_ler_linhas(p)[0]).values())
+            for p in sorted(Path(pasta).glob("*.jsonl"))}
+
+
+def esperadas_do_conjunto():
+    """Carregador padrão de `gerar_relatorio`: devolve `cfg → {pergunta_id: fonte}` com todas as perguntas do
+    conjunto da configuração (`rodar.carregar_conjunto`, o que a rodada completa responde), carregando cada
+    conjunto uma vez."""
+    cache: dict[str, dict[str, str]] = {}
+
+    def esperadas(cfg) -> dict[str, str]:
+        if cfg.conjunto not in cache:
+            cache[cfg.conjunto] = {str(p.id): c.fonte for c in carregar_conjunto(cfg) for p in c.perguntas}
+        return cache[cfg.conjunto]
+
+    return esperadas
+
+
+def _respondidas(linhas: list[dict]) -> set[str]:
+    """Perguntas com resposta final: sem erro de API (recusa e resposta vazia contam, como erradas)."""
+    return {str(l["pergunta_id"]) for l in linhas if not _refazer(l)}
+
+
+def _parcial(respondidas: int, total: int) -> str:
+    return f"parcial ({respondidas} de {total})" if respondidas < total else ""
+
+
+def _nas_esperadas(linhas: list[dict], esperadas: dict[str, str] | None) -> list[dict]:
+    """Só as linhas de perguntas esperadas (todas, se a configuração não está em `CONFIGURACOES`)."""
+    if esperadas is None:
+        return linhas
+    return [l for l in linhas if str(l["pergunta_id"]) in esperadas]
+
+
+def _nota(linhas: list[dict], esperadas: dict[str, str] | None) -> str:
+    """"parcial (x de N)" se falta resposta final para alguma pergunta esperada; "" se completa."""
+    if esperadas is None:
+        return "fora de CONFIGURACOES"
+    return _parcial(len(_respondidas(linhas) & set(esperadas)), len(esperadas))
 
 
 def _acerto(linha: dict) -> bool:
     """Acerto primário: nas MCC (`icl*`) a leitura flexível de `label:`, nas demais o `acerto` gravado.
-    Linha com erro vale como errada. O prompt do autor manda responder "label: N" e o `exact_match`
-    estrito dá ~0 para qualquer agente; por isso o estrito fica ao lado (`_acerto_estrito`)."""
+    Linha com erro vale como errada. O prompt do autor manda responder "label: N", que o `exact_match` estrito
+    conta como erro (no piloto, 0 em 10 nos dois braços); por isso o estrito fica ao lado (`_acerto_estrito`)."""
     if linha.get("erro"):
         return False
     if str(linha.get("fonte", "")).startswith("icl"):
@@ -143,7 +189,7 @@ def _tabela(cabecalho: list[str], linhas: list[list[str]]) -> list[str]:
 
 # ---------------------------------------------------------------- seções
 
-def _secao_primarias(dados: dict[str, list[dict]]) -> list[str]:
+def _secao_primarias(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] | None]) -> list[str]:
     linhas, notas = [], []
     for titulo, nome_lc, nome_rag, sentido in PRIMARIAS:
         if nome_lc not in dados or nome_rag not in dados:
@@ -151,9 +197,12 @@ def _secao_primarias(dados: dict[str, list[dict]]) -> list[str]:
             linhas.append([titulo, NAO_RODADA, "", "", "", "", f"sem: {', '.join(ausentes)}"])
             continue
         lc, rag = _por_pergunta(dados[nome_lc]), _por_pergunta(dados[nome_rag])
-        ids = sorted(set(lc) & set(rag))
+        esperadas = set(esp[nome_lc]) & set(esp[nome_rag])
+        respondidas = _respondidas(dados[nome_lc]) & _respondidas(dados[nome_rag]) & esperadas
+        nota = _parcial(len(respondidas), len(esperadas))
+        ids = sorted(set(lc) & set(rag) & esperadas)
         if not ids:
-            linhas.append([titulo, "0", "", "", "", "", "sem perguntas em comum"])
+            linhas.append([titulo, "0", "", "", "", "sem veredito", nota or "sem perguntas em comum"])
             continue
         a = [_acerto(lc[i]) for i in ids]  # contexto longo
         b = [_acerto(rag[i]) for i in ids]  # RAG
@@ -162,25 +211,26 @@ def _secao_primarias(dados: dict[str, list[dict]]) -> list[str]:
         d, li, ls = bootstrap_pareado(a, b, estratos)
         _, la, sa = intervalo_acuracia(a, estratos=estratos)
         _, lb, sb = intervalo_acuracia(b, estratos=estratos)
-        total = len(set(lc) | set(rag))
-        api = sum(1 for l in (*dados[nome_lc], *dados[nome_rag])
-                  if l.get("erro") and l.get("erro") not in ERROS_FINAIS)
-        nota = f"(parcial: {len(ids)} de {total})" if len(ids) < total or api else ""
-        if api and len(ids) == total:
-            nota = f"(parcial: {len(ids)} de {total}, {api} erro(s) de API)"
         linhas.append([titulo, str(len(ids)), _ic(np.mean(a), la, sa), _ic(np.mean(b), lb, sb),
-                       _ic_dif(d, li, ls), veredito(li, ls, sentido), nota])
+                       _ic_dif(d, li, ls), "sem veredito" if nota else veredito(li, ls, sentido), nota])
         fora_lc, fora_rag = len(lc) - len(ids), len(rag) - len(ids)
         if fora_lc or fora_rag:
             notas.append(f"- {titulo}: {fora_lc} pergunta(s) de `{nome_lc}` e {fora_rag} de `{nome_rag}` "
-                         f"descartadas por não estarem nas duas configurações.")
+                         f"descartadas por não estarem nas duas configurações (ou fora das perguntas esperadas).")
+        if titulo == "H2 direta":
+            ea, eb = (np.mean([_acerto_estrito(x[i]) for i in ids]) for x in (lc, rag))
+            notas.append(f"- H2 direta, `exact_match` estrito (literal do README), nas mesmas {len(ids)} perguntas: "
+                         f"contexto longo {_pct(ea)}, RAG BM25 {_pct(eb)}.")
     out = ["## Primárias", "",
            "Contexto longo × RAG BM25, GPT-4o-mini, perguntas pareadas por `pergunta_id`. Diferença = "
            "RAG − contexto longo, bootstrap pareado de 10.000 reamostragens (IC de 95%); linhas com erro "
-           "contam como erradas. H1 espera diferença positiva (RAG vence), H2 negativa (contexto longo vence).",
-           "", "Nas MCC, a acurácia é a leitura flexível de `label:`; o `exact_match` estrito do README aparece "
-           "ao lado (seção de reprodução). Com o prompt do autor, toda resposta obediente vem como "
-           "\"label: N\", e o estrito dá ~0 para qualquer agente (ver Decisões do piloto no desenho).",
+           "contam como erradas. H1 espera diferença positiva (RAG vence), H2 negativa (contexto longo vence). "
+           "Comparação em que falta resposta final (linha ausente ou com erro de API) para alguma pergunta "
+           "esperada sai \"parcial (x de N)\" e fica sem veredito.",
+           "", "Nas MCC, a acurácia é a leitura flexível de `label:` (ver Decisões do piloto no desenho): com o "
+           "prompt do autor, a resposta obediente vem como \"label: N\", que o `exact_match` estrito do README "
+           "conta como erro. O estrito medido está nas notas abaixo da tabela e na última coluna da seção de "
+           "reprodução.",
            ""]
     out += _tabela(["Comparação", "n", "Contexto longo", "RAG BM25", "Diferença", "Veredito", "Nota"], linhas)
     if notas:
@@ -188,42 +238,49 @@ def _secao_primarias(dados: dict[str, list[dict]]) -> list[str]:
     return out + [""]
 
 
-def _secao_reproducao(dados: dict[str, list[dict]]) -> list[str]:
+def _secao_reproducao(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] | None]) -> list[str]:
     out = ["## Reprodução (etapa direta)", "",
            "Número do artigo (em %) contra a nossa acurácia com IC de 95% (bootstrap). "
            "Reproduz se o número do artigo cai dentro do intervalo. Média MCC: bootstrap estratificado por "
-           "dataset. Nas MCC, \"Nossa acurácia\" é a leitura flexível de `label:` e \"Reproduz\" a usa; a última "
-           "coluna é o `exact_match` estrito (sem veredito).", ""]
+           "dataset. Nas MCC, \"Nossa acurácia\" é a leitura flexível de `label:` e \"Reproduz\" a usa; a coluna "
+           "do estrito é o `exact_match` literal do README (sem veredito). Fonte parcial (falta resposta final "
+           "para alguma pergunta esperada) fica \"sem teste\"; a média MCC exige as cinco fontes completas.", ""]
     linhas = []
     for cfg in (c for c in CONFIGURACOES if c.etapa == "direta"):
         if cfg.nome not in dados:
-            linhas.append([cfg.nome, NAO_RODADA, "", "", "", "", ""])
+            linhas.append([cfg.nome, NAO_RODADA, "", "", "", "", "", ""])
             continue
-        todas = dados[cfg.nome]
+        esperadas = esp[cfg.nome]
+        todas = _nas_esperadas(dados[cfg.nome], esperadas)
+        respondidas = _respondidas(todas)
+
+        def contagem(fontes_) -> tuple[int, int]:
+            ids = {i for i, f in esperadas.items() if f in fontes_}
+            return len(ids & respondidas), len(ids)
+
         fontes = [FONTE_MHQA] if cfg.conjunto == FONTE_MHQA else list(MCC_FONTES)
-        itens = []
-        for f in fontes:
-            ls_f = [l for l in todas if l["fonte"] == f]
-            itens.append((f, ls_f, None, NUMEROS_ARTIGO.get((f, cfg.agente))))
+        itens = [(f, [l for l in todas if l["fonte"] == f], None, NUMEROS_ARTIGO.get((f, cfg.agente)),
+                  contagem({f})) for f in fontes]
         if cfg.conjunto == "mcc":
-            itens.append(("média MCC", [l for l in todas if l["fonte"] in MCC_FONTES],
-                          "estratificar", NUMEROS_ARTIGO.get(("mcc", cfg.agente))))
-        for rotulo, ls_f, modo, numero in itens:
+            itens.append(("média MCC", [l for l in todas if l["fonte"] in MCC_FONTES], "estratificar",
+                          NUMEROS_ARTIGO.get(("mcc", cfg.agente)), contagem(set(MCC_FONTES))))
+        for rotulo, ls_f, modo, numero, (feitas, total) in itens:
+            nota = _parcial(feitas, total)
             if not ls_f:
-                linhas.append([cfg.nome, rotulo, NAO_RODADA, "", "", "", ""])
+                linhas.append([cfg.nome, rotulo, NAO_RODADA, "", "", "", "", nota])
                 continue
             est = [l["fonte"] for l in ls_f] if modo else None
             acc, li, ls = intervalo_acuracia([_acerto(l) for l in ls_f], estratos=est)
             estrito = ""
             if cfg.conjunto == "mcc":
                 estrito = _ic(*intervalo_acuracia([_acerto_estrito(l) for l in ls_f], estratos=est))
-            if numero is None:
-                linhas.append([cfg.nome, rotulo, str(len(ls_f)), _ic(acc, li, ls), "", "", estrito])
-            else:
-                linhas.append([cfg.nome, rotulo, str(len(ls_f)), _ic(acc, li, ls), f"{numero:.1f}%",
-                               "sim" if reproduz(numero, li, ls) else "não", estrito])
+            artigo, teste = "", ""
+            if numero is not None:
+                artigo = f"{numero:.1f}%"
+                teste = "sem teste" if nota else ("sim" if reproduz(numero, li, ls) else "não")
+            linhas.append([cfg.nome, rotulo, str(len(ls_f)), _ic(acc, li, ls), artigo, teste, estrito, nota])
     out += _tabela(["Configuração", "Fonte", "n", "Nossa acurácia", "Artigo", "Reproduz",
-                    "Estrito (literal do README)"], linhas)
+                    "Estrito (literal do README)", "Nota"], linhas)
     return out + [""]
 
 
@@ -232,7 +289,7 @@ def _nomes_presentes(dados: dict[str, list[dict]]) -> list[str]:
     return ordem + [n for n in dados if n not in _POR_NOME]
 
 
-def _secao_secundarias(dados: dict[str, list[dict]]) -> list[str]:
+def _secao_secundarias(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] | None]) -> list[str]:
     primarias = {n for _, a, b, _ in PRIMARIAS for n in (a, b)}
     nomes = [n for n in _nomes_presentes(dados) if n not in primarias]
     out = ["## Secundárias", "", "Acurácia com IC de 95%, sem veredito. As configurações diretas têm a "
@@ -241,16 +298,17 @@ def _secao_secundarias(dados: dict[str, list[dict]]) -> list[str]:
         return out + ["Nenhuma configuração secundária na pasta.", ""]
     linhas = []
     for n in nomes:
-        ls_n = dados[n]
+        ls_n = _nas_esperadas(dados[n], esp[n])
+        nota = _nota(dados[n], esp[n])
         if not ls_n:
-            linhas.append([n, "0", "sem linhas"])
+            linhas.append([n, "0", "sem linhas", nota])
             continue
         acc, li, ls = _acuracia_ic(ls_n)
-        linhas.append([n, str(len(ls_n)), _ic(acc, li, ls)])
-    return out + _tabela(["Configuração", "n", "Acurácia"], linhas) + [""]
+        linhas.append([n, str(len(ls_n)), _ic(acc, li, ls), nota])
+    return out + _tabela(["Configuração", "n", "Acurácia", "Nota"], linhas) + [""]
 
 
-def _secao_custos(dados: dict[str, list[dict]]) -> list[str]:
+def _secao_custos(dados: dict[str, list[dict]], esp: dict[str, dict[str, str] | None]) -> list[str]:
     out = ["## Custos", "",
            "Por configuração. Erros de API e recusas/respostas vazias são contados à parte e valem como erro.",
            ""]
@@ -263,21 +321,33 @@ def _secao_custos(dados: dict[str, list[dict]]) -> list[str]:
         api = sum(1 for l in ls_n if l.get("erro") and l.get("erro") not in ERROS_FINAIS)
         linhas.append([n, str(len(ls_n)), f"{entrada:,}", _pct(cache / entrada) if entrada else "-",
                        f"{sum(l.get('tokens_saida', 0) for l in ls_n):,}",
-                       f"{sum(l.get('custo_usd', 0.0) for l in ls_n):.4f}", str(api), str(recusas)])
+                       f"{sum(l.get('custo_usd', 0.0) for l in ls_n):.4f}", str(api), str(recusas),
+                       _nota(ls_n, esp[n])])
     if not linhas:
         return out + ["Nenhuma configuração na pasta.", ""]
     out += _tabela(["Configuração", "n", "Tokens de entrada", "% cacheado", "Tokens de saída", "US$",
-                    "Erros de API", "Recusas/vazias"], linhas)
+                    "Erros de API", "Recusas/vazias", "Nota"], linhas)
+    out += ["", "A coluna US$ soma o `custo_usd` das linhas, que não inclui os embeddings (centavos, só no "
+            "livro-caixa). As configurações de embedding com o Haiku de leitor também gastaram na OpenAI, nos "
+            "embeddings, e esse gasto não aparece aqui."]
     return out + [""]
 
 
-def gerar_relatorio(pasta: Path) -> str:
-    """Grava `pasta/tabela.md` (primárias, reprodução, secundárias e custos) e devolve o texto."""
+def gerar_relatorio(pasta: Path, esperadas=None) -> str:
+    """Grava `pasta/tabela.md` (primárias, reprodução, secundárias e custos) e devolve o texto.
+
+    `esperadas(cfg)` devolve `{pergunta_id: fonte}` das perguntas que a configuração responde numa rodada
+    completa; com `None`, vem de `esperadas_do_conjunto()` (o conjunto da configuração, por
+    `rodar.carregar_conjunto`). Uma configuração está completa quando toda pergunta esperada tem linha sem
+    erro de API; senão sai "parcial (x de N)" em todas as seções, sem veredito nem teste de reprodução.
+    """
     pasta = Path(pasta)
     dados = carregar_rodada(pasta)
+    esperadas = esperadas or esperadas_do_conjunto()
+    esp = {n: esperadas(_POR_NOME[n]) if n in _POR_NOME else None for n in dados}
     linhas = [f"# Resultados: {pasta.name}", ""]
     for secao in (_secao_primarias, _secao_reproducao, _secao_secundarias, _secao_custos):
-        linhas += secao(dados)
+        linhas += secao(dados, esp)
     md = "\n".join(linhas)
     (pasta / "tabela.md").write_text(md, encoding="utf-8")
     return md
@@ -336,6 +406,7 @@ def grafico_qualidade_tokens(pasta: Path) -> Path | None:
 
 
 def main(argv=None) -> int:
+    saida_tolerante()
     ap = argparse.ArgumentParser(prog="python -m replica.analise",
                                  description="Tabela de vereditos e gráfico de uma pasta de rodada.")
     ap.add_argument("pasta", type=Path)

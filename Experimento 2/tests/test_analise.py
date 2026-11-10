@@ -1,6 +1,10 @@
 """Análise: bootstrap pareado, vereditos, reprodução, tabela e gráfico. Nenhum teste chama API."""
+import io
+import sys
+
 from pytest import approx
 
+import replica.analise as analise
 from replica.analise import (
     NAO_RODADA,
     PRIMARIAS,
@@ -15,6 +19,7 @@ from replica.analise import (
 )
 from replica.arquivos import anexar_jsonl
 from replica.config import FONTE_MHQA, MCC_FONTES
+from replica.conjuntos import Contexto, Pergunta
 
 
 def _linha(nome, fonte, i, acerto, erro=None, entrada=1000, flex=None):
@@ -48,6 +53,26 @@ def _gravar(pasta, nome, fonte, acertos, flexiveis=None, **kw):
     for i, a in enumerate(acertos):
         flex = None if flexiveis is None else flexiveis[i]
         anexar_jsonl(pasta / f"{nome}.jsonl", _linha(nome, fonte, i, a, flex=flex, **kw))
+
+
+def _completas(pasta):
+    """`esperadas` de uma rodada completa: cada configuração espera exatamente as perguntas que já tem na pasta."""
+    dados = carregar_rodada(pasta)
+    return lambda cfg: {str(l["pergunta_id"]): l["fonte"] for l in dados.get(cfg.nome, [])}
+
+
+def _esperadas(por_fonte):
+    """`esperadas` com `por_fonte[f]` perguntas por fonte (ids `{fonte}:{i}`, como em `_linha`), para as
+    configurações cujo conjunto tem aquela fonte."""
+    def esperadas(cfg):
+        if cfg.conjunto == FONTE_MHQA:
+            fontes = [FONTE_MHQA]
+        elif cfg.conjunto == "mcc":
+            fontes = list(MCC_FONTES)
+        else:
+            fontes = [cfg.conjunto]
+        return {f"{f}:{i}": f for f in fontes for i in range(por_fonte.get(f, 0))}
+    return esperadas
 
 
 def test_bootstrap_pareado_contem_a_diferenca():
@@ -110,7 +135,7 @@ def _rodada_completa(pasta):
 
 def test_relatorio_tem_as_quatro_primarias(tmp_path):
     _rodada_completa(tmp_path)
-    md = gerar_relatorio(tmp_path)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
     assert (tmp_path / "tabela.md").read_text(encoding="utf-8") == md
     for titulo, *_ in PRIMARIAS:
         assert titulo in md
@@ -149,7 +174,7 @@ def test_relatorio_tem_as_quatro_primarias(tmp_path):
 def test_relatorio_pasta_incompleta(tmp_path):
     _gravar(tmp_path, "direta-mhqa-lc-4omini", FONTE_MHQA, [True] * 40 + [False] * 60)
     _gravar(tmp_path, "direta-mhqa-bm25-4omini", FONTE_MHQA, [True] * 60 + [False] * 40)
-    md = gerar_relatorio(tmp_path)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
     assert "H1 direta" in md and "H2 OAB" in md
     assert md.count("não rodada") >= 3
     # sem nenhuma configuração H1 da OAB, não há gráfico
@@ -170,13 +195,15 @@ def test_pareamento_pela_intersecao_e_erros_contam_como_erro(tmp_path):
     # o RAG acerta as 10 e tem mais uma pergunta (99) que o contexto longo não tem
     _gravar(tmp_path, rag, "oab_h1", [True] * 10)
     anexar_jsonl(tmp_path / f"{rag}.jsonl", _linha(rag, "oab_h1", 99, True))
-    md = gerar_relatorio(tmp_path)
+    onze = {f"oab_h1:{i}": "oab_h1" for i in [*range(10), 99]}  # as 11 questões que a rodada deveria ter
+    md = gerar_relatorio(tmp_path, lambda cfg: onze)
     prim = {c[0]: c for c in _linhas_da_secao(md, "Primárias")}
     h1 = prim["H1 OAB"]
     assert h1[1] == "10"  # interseção de 10 perguntas
     assert h1[2].startswith("80.0%")  # os dois erros baixam a acurácia mesmo com acerto=True gravado
     assert h1[3].startswith("100.0%")
-    assert "(parcial: 10 de 11" in h1[6]  # união de 11 ids, e há erro de API
+    # respondidas nas duas: 0 a 7 e a 9 (recusa é resposta final); a 8 tem erro de API e a 99 falta no LC
+    assert h1[6] == "parcial (9 de 11)" and h1[5] == "sem veredito"
     assert "descartad" in md and "1 de `oab-h1-bm25-4omini`" in md
     custos = {c[0]: c for c in _linhas_da_secao(md, "Custos")}
     assert custos[lc][1] == "10" and custos[lc][6] == "1" and custos[lc][7] == "1"  # API, recusas/vazias
@@ -189,7 +216,7 @@ def test_resposta_vazia_conta_como_recusa_e_nao_como_erro_de_api(tmp_path):
                  _linha("oab-h1-lc-4omini", "oab_h1", 5, False, erro="[erro: resposta vazia]"))
     anexar_jsonl(tmp_path / "oab-h1-lc-4omini.jsonl",
                  _linha("oab-h1-lc-4omini", "oab_h1", 6, False, erro="Connection error"))
-    md = gerar_relatorio(tmp_path)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
     c = {x[0]: x for x in _linhas_da_secao(md, "Custos")}["oab-h1-lc-4omini"]
     assert c[6] == "1" and c[7] == "1"
 
@@ -198,14 +225,15 @@ def test_ic_das_mcc_e_estratificado_em_todas_as_secoes(tmp_path):
     # três fontes com 100% e duas com 0%: estratificado, a acurácia é 60% e o intervalo não tem largura
     for k, f in enumerate(MCC_FONTES):
         _gravar(tmp_path, "direta-mcc-emb-4omini", f, [False] * 20, flexiveis=[k < 3] * 20)
-    md = gerar_relatorio(tmp_path)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
     sec = {c[0]: c for c in _linhas_da_secao(md, "Secundárias")}
     assert sec["direta-mcc-emb-4omini"][2] == "60.0% [60.0%; 60.0%]"
     rep = {(c[0], c[1]): c for c in _linhas_da_secao(md, "Reprodução")}
     assert rep[("direta-mcc-emb-4omini", "média MCC")][3] == "60.0% [60.0%; 60.0%]"
 
 
-def test_grafico_e_main(tmp_path, capsys):
+def test_grafico_e_main(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(analise, "esperadas_do_conjunto", lambda: _completas(tmp_path))
     _rodada_completa(tmp_path)
     for k in (2, 5, 20):
         _gravar(tmp_path, f"oab-h1-bm25-4omini-k{k}", "oab_h1", [True] * (40 + k) + [False] * (60 - k),
@@ -223,6 +251,102 @@ def test_mcc_secundaria_usa_flexivel_e_erro_continua_errado(tmp_path):
     _gravar(tmp_path, "direta-mcc-emb-4omini", MCC_FONTES[0], [False] * 4, flexiveis=[True] * 4)
     anexar_jsonl(tmp_path / "direta-mcc-emb-4omini.jsonl",
                  _linha("direta-mcc-emb-4omini", MCC_FONTES[0], 4, False, erro="[erro: api]", flex=True))
-    md = gerar_relatorio(tmp_path)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
     sec = {c[0]: c for c in _linhas_da_secao(md, "Secundárias")}
     assert sec["direta-mcc-emb-4omini"][2].startswith("80.0%")  # 4 de 5; o erro vale como errado
+
+
+# --- rodada parcial: marca "parcial (x de N)", sem veredito nem teste de reprodução ---
+
+def test_primaria_parcial_fica_sem_veredito(tmp_path):
+    _gravar(tmp_path, "direta-mhqa-lc-4omini", FONTE_MHQA, [False] * 60)  # 60 das 100 perguntas
+    _gravar(tmp_path, "direta-mhqa-bm25-4omini", FONTE_MHQA, [True] * 100)
+    md = gerar_relatorio(tmp_path, _esperadas({FONTE_MHQA: 100}))
+    h1 = {c[0]: c for c in _linhas_da_secao(md, "Primárias")}["H1 direta"]
+    # a diferença de +100 pp daria "confirmada"; parcial, não dá veredito
+    assert h1[1] == "60" and h1[5] == "sem veredito" and h1[6] == "parcial (60 de 100)"
+
+
+def test_reproducao_parcial_fica_sem_teste_e_a_media_mcc_exige_as_cinco(tmp_path):
+    for k, f in enumerate(MCC_FONTES):
+        n = 50 if k == 4 else 100  # a última fonte só tem metade
+        _gravar(tmp_path, "direta-mcc-lc-4omini", f, [False] * n, flexiveis=[True] * (n * 4 // 5) + [False] * (n // 5))
+    _gravar(tmp_path, "direta-mhqa-lc-4omini", FONTE_MHQA, [True] * 43 + [False] * 56)
+    anexar_jsonl(tmp_path / "direta-mhqa-lc-4omini.jsonl",
+                 _linha("direta-mhqa-lc-4omini", FONTE_MHQA, 99, False, erro="[erro: api]"))
+    md = gerar_relatorio(tmp_path, _esperadas({FONTE_MHQA: 100, **{f: 100 for f in MCC_FONTES}}))
+    rep = {(c[0], c[1]): c for c in _linhas_da_secao(md, "Reprodução")}
+    completa = rep[("direta-mcc-lc-4omini", MCC_FONTES[0])]
+    assert completa[5] in ("sim", "não") and completa[7] == ""
+    metade = rep[("direta-mcc-lc-4omini", MCC_FONTES[4])]
+    assert (metade[2], metade[5], metade[7]) == ("50", "sem teste", "parcial (50 de 100)")
+    media = rep[("direta-mcc-lc-4omini", "média MCC")]
+    assert (media[5], media[7]) == ("sem teste", "parcial (450 de 500)")
+    mhqa = rep[("direta-mhqa-lc-4omini", FONTE_MHQA)]  # a linha com erro de API não é resposta
+    assert (mhqa[5], mhqa[7]) == ("sem teste", "parcial (99 de 100)")
+
+
+def test_secundarias_e_custos_marcam_parcial(tmp_path):
+    _gravar(tmp_path, "oab-h1-emb-4omini", "oab_h1", [True] * 5)
+    _gravar(tmp_path, "oab-h1-bm25-4omini-k2", "oab_h1", [True] * 10)
+    md = gerar_relatorio(tmp_path, _esperadas({"oab_h1": 10}))
+    sec = {c[0]: c for c in _linhas_da_secao(md, "Secundárias")}
+    assert sec["oab-h1-emb-4omini"][3] == "parcial (5 de 10)" and sec["oab-h1-bm25-4omini-k2"][3] == ""
+    custos = {c[0]: c for c in _linhas_da_secao(md, "Custos")}
+    assert custos["oab-h1-emb-4omini"][8] == "parcial (5 de 10)" and custos["oab-h1-bm25-4omini-k2"][8] == ""
+
+
+def test_esperadas_padrao_vem_do_conjunto_da_configuracao(tmp_path, monkeypatch):
+    carregados = []
+
+    def carregar(cfg):
+        carregados.append(cfg.conjunto)
+        return [Contexto(0, FONTE_MHQA, "", [Pergunta(f"{FONTE_MHQA}:{i}", "q", ["x"]) for i in range(100)])]
+
+    monkeypatch.setattr(analise, "carregar_conjunto", carregar)
+    _gravar(tmp_path, "direta-mhqa-lc-4omini", FONTE_MHQA, [True] * 40)
+    _gravar(tmp_path, "direta-mhqa-bm25-4omini", FONTE_MHQA, [True] * 100)
+    md = gerar_relatorio(tmp_path)
+    assert carregados == [FONTE_MHQA]  # uma vez por conjunto
+    h1 = {c[0]: c for c in _linhas_da_secao(md, "Primárias")}["H1 direta"]
+    assert h1[6] == "parcial (40 de 100)"
+
+
+# --- leitura tolerante, nota do estrito medida, nota dos embeddings e saída ---
+
+def test_carregar_rodada_tolera_linha_cortada_e_deixa_uma_por_pergunta(tmp_path):
+    caminho = tmp_path / "oab-h1-lc-4omini.jsonl"
+    anexar_jsonl(caminho, _linha("oab-h1-lc-4omini", "oab_h1", 0, False, erro="[erro: api]"))
+    anexar_jsonl(caminho, _linha("oab-h1-lc-4omini", "oab_h1", 0, True))  # a retomada refez a 0
+    anexar_jsonl(caminho, _linha("oab-h1-lc-4omini", "oab_h1", 1, True))
+    with open(caminho, "ab") as f:  # queda no meio da escrita, cortando um caractere de dois bytes
+        f.write(b'{"configuracao": "oab-h1-lc-4omini", "pergunta_id": "oab_h1:2", "consulta": "Quest\xc3')
+    linhas = carregar_rodada(tmp_path)["oab-h1-lc-4omini"]
+    assert [(l["pergunta_id"], l["erro"]) for l in linhas] == [("oab_h1:0", None), ("oab_h1:1", None)]
+
+
+def test_nota_do_estrito_traz_o_valor_medido(tmp_path):
+    for f in MCC_FONTES:
+        _gravar(tmp_path, "direta-mcc-lc-4omini", f, [True] * 10 + [False] * 90, flexiveis=[True] * 80 + [False] * 20)
+        _gravar(tmp_path, "direta-mcc-bm25-4omini", f, [True] * 20 + [False] * 80, flexiveis=[True] * 70 + [False] * 30)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
+    bloco = md.split("## Primárias")[1].split("\n## ")[0]
+    assert "~0" not in md
+    assert "estrito" in bloco and "contexto longo 10.0%" in bloco and "RAG BM25 20.0%" in bloco
+
+
+def test_custos_avisam_que_os_embeddings_ficam_de_fora(tmp_path):
+    _gravar(tmp_path, "oab-h1-emb-haiku", "oab_h1", [True] * 3)
+    md = gerar_relatorio(tmp_path, _completas(tmp_path))
+    bloco = md.split("## Custos")[1]
+    assert "embeddings" in bloco and "Haiku" in bloco and "livro-caixa" in bloco
+
+
+def test_main_nao_morre_com_caractere_fora_do_cp1252(tmp_path, monkeypatch):
+    saida = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    erros = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", saida)
+    monkeypatch.setattr(sys, "stderr", erros)
+    assert main([str(tmp_path / "nao-existe-✓")]) == 2
+    erros.flush()
+    assert b"nao-existe-\\u2713" in erros.buffer.getvalue()

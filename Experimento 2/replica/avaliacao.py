@@ -18,7 +18,10 @@ def avaliar(fonte: str, saida: str, gabarito: list[str]) -> tuple[bool, dict]:
 
     - `oab*`: acerto se a letra extraída é `gabarito[0]`; métricas `letra` e `letra_invalida`.
     - `icl*` (MCC): `post_process` do autor, acerto = `exact_match` estrito (o README do autor:
-      "label: 43" conta como erro); métricas do autor mais `exact_match_flexivel`.
+      "label: 43" conta como erro); métricas do autor mais `exact_match_flexivel`. Atenção: o `acerto` que
+      o rodador grava no JSONL das MCC é esse estrito, mas a métrica primária (veredito, reprodução e
+      secundárias) é `metricas.exact_match_flexivel`, aplicada em `analise.py` (Decisões do piloto, no
+      desenho). O campo do JSONL não muda, para as duas leituras ficarem gravadas.
     - `ruler*` (MH-QA): `post_process` do autor, acerto = `substring_exact_match`.
     """
     if fonte.startswith("oab"):
