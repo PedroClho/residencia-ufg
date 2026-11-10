@@ -407,7 +407,7 @@ Nas 500 perguntas das cinco MCC, o contexto longo acertou 77,0% e o BM25 76,8%. 
 
 ### 6.2 Decisões tomadas pelo Claude durante a execução sem o Pedro
 
-O plano foi executado pelo Claude numa sessão sem o Pedro. As rodadas reais estavam pré-autorizadas, dentro dos tetos e na ordem do plano. As decisões abaixo foram tomadas nessa sessão, uma por linha, para o Pedro rever. As do piloto também estão no desenho ("Decisões do piloto").
+O plano foi executado pelo Claude numa sessão sem o Pedro. As rodadas reais estavam pré-autorizadas, dentro dos tetos e na ordem do plano; a ordem foi quebrada uma vez (item 22). As decisões abaixo foram tomadas nessa sessão, uma por linha, para o Pedro rever. As do piloto também estão no desenho ("Decisões do piloto").
 
 Decisões que mexem nos dados, no protocolo, no gasto ou na leitura:
 
